@@ -283,6 +283,11 @@
   <div class="sub" style="margin:4px 18px 12px">Only completion %s are shared. Journals, whys, and tasks stay private to each person.</div>
 </div>
 
+<div id="errBar" onclick="this.style.display='none'"
+     style="display:none;position:fixed;left:10px;right:10px;top:calc(8px + env(safe-area-inset-top));z-index:300;
+            background:#3a1414;border:1px solid #E05252;color:#ffdada;border-radius:12px;padding:12px 14px;
+            font-size:13px;line-height:1.5;box-shadow:0 10px 30px rgba(0,0,0,.5)"></div>
+
 <div id="viewEdit" style="display:none">
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
     <div><b style="color:var(--ink)">Signed in</b>
@@ -576,6 +581,16 @@ function show(which){
       return;
     }
     curView = which;
+    // Everything is already on screen in one-view mode, so take them to it
+    // rather than doing nothing - a button that does nothing reads as broken.
+    var target = which === 'progress' ? 'viewCal' : which === 'group' ? 'viewGroup' : 'viewToday';
+    var el = document.getElementById(target);
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    ['Today','Prog','Group'].forEach(function(n){
+      var t = document.getElementById('tab' + n); if (t) t.className = 'tab';
+    });
+    var on = document.getElementById('tab' + (which === 'today' ? 'Today' : which === 'group' ? 'Group' : 'Prog'));
+    if (on) on.className = 'tab on';
     return;
   }
   curView = which;
@@ -1080,18 +1095,73 @@ function loginGo(){
   }).withFailureHandler(function(){ err.textContent = 'Connection problem - try again.'; })
     .loginLink(document.getElementById('lName').value, document.getElementById('lPin').value);
 }
+function showError(msg, where){
+  var b = document.getElementById('errBar');
+  if (!b) { console.error(where, msg); return; }
+  b.innerHTML = '<b>Something broke' + (where ? ' in ' + where : '') + '.</b><br>' +
+                String(msg).slice(0, 300) + '<br><span style="opacity:.7">Tap to dismiss.</span>';
+  b.style.display = '';
+  console.error(where, msg);
+}
+window.addEventListener('error', function(e){ showError(e.message + ' (' + (e.filename||'').split('/').pop() + ':' + e.lineno + ')', 'the page'); });
+window.addEventListener('unhandledrejection', function(e){ showError((e.reason && e.reason.message) || e.reason, 'a background task'); });
+
 function boot(){
-  document.getElementById('pinGate').style.display = 'none';
+  var pg = document.getElementById('pinGate'); if (pg) pg.style.display = 'none';
   google.script.run.withSuccessHandler(function(res){
-    state = JSON.parse(res); setBirth_(state.birth); render(); applyLayout(); maybeGuide_();
+    try { state = JSON.parse(res); } catch (e) { showError('Bad response from the server.', 'loading your day'); return; }
+    // Each step is isolated: one failing step must never leave the app half-drawn
+    // with dead buttons, which is exactly what used to happen.
+    try { setBirth_(state.birth); } catch (e) { showError(e.message, 'your birthday'); }
+    try { render(); }              catch (e) { showError(e.message, 'the day view'); }
+    try { applyLayout(); }         catch (e) { showError(e.message, 'the layout'); }
+    try { maybeGuide_(); }         catch (e) {}
+    try { emptyState_(); }         catch (e) {}
   }).withFailureHandler(function(e){
-    var msg = String(e && e.message || '');
-    if (msg.indexOf('UNKNOWN_USER') >= 0) { location.href = BASE_URL + '?join=1'; return; }
-    document.getElementById('pinWho').textContent = 'for ' + USER;
-    document.getElementById('pinGate').style.display = '';
-    if (PIN) document.getElementById('pinErr').textContent = 'Wrong PIN - try again.';
-    document.getElementById('pinIn').value = ''; document.getElementById('pinIn').focus();
+    showError((e && e.message) || e, 'loading your day');
+    try { applyLayout(); } catch (e2) {}   // still give them a working screen
   }).getState(USER, selDate, PIN);
+}
+
+/* Nobody should ever land on a blank tracker. If there are no habits yet,
+   offer a starting point - examples to edit, not a blank page and not a copy
+   of somebody else's life. */
+var STARTER = [
+  {group:'Morning',   name:'Wake at your set time',            cadence:'daily'},
+  {group:'Morning',   name:'Move your body - 30 minutes',      cadence:'daily'},
+  {group:'Morning',   name:'10 minutes of quiet, prayer or reading', cadence:'daily'},
+  {group:'Afternoon', name:'Hit your protein target',          cadence:'daily'},
+  {group:'Afternoon', name:'Drink your water',                 cadence:'daily'},
+  {group:'Night',     name:'Write tomorrow\'s list',            cadence:'daily'},
+  {group:'Night',     name:'Read 10 pages',                    cadence:'daily'},
+  {group:'Standards', name:'No phone in bed',                  cadence:'daily'},
+  {group:'Standards', name:'Nothing to eat 3 hours before sleep', cadence:'daily'},
+  {group:'Standards', name:'Speak to one new person',          cadence:'daily'},
+  {group:'Weekly',    name:'One long walk or run',             cadence:'weekly'}
+];
+function emptyState_(){
+  var box = document.getElementById('list');
+  if (!box || !state || (state.habits && state.habits.length)) return;
+  box.innerHTML =
+    '<div class="card" style="text-align:left">' +
+      '<h1 style="font-size:19px;margin-bottom:6px">Let\'s set your standard.</h1>' +
+      '<div class="sub" style="margin-bottom:14px;line-height:1.6">These are examples to get you moving - ' +
+      'rename them, delete them, add your own. <b style="color:var(--ink)">Keep it short.</b> ' +
+      'A list you can actually finish beats a list that looks impressive.</div>' +
+      '<div id="starterList" style="font-size:14px;line-height:1.9;color:var(--ink2);margin-bottom:16px"></div>' +
+      '<button class="save" style="position:static;width:100%" onclick="useStarter_()">Start with these 11</button>' +
+      '<div class="sub" style="text-align:center;margin-top:10px">or tap <b style="color:var(--ink)">&#9998;</b> to build your own</div>' +
+    '</div>';
+  var s = '';
+  STARTER.forEach(function(x){ s += '<div>&#183; ' + x.name + (x.cadence === 'weekly' ? ' <span class="pill">WEEKLY</span>' : '') + '</div>'; });
+  document.getElementById('starterList').innerHTML = s;
+}
+function useStarter_(){
+  var list = STARTER.map(function(x, i){ return { id:'', name:x.name, group:x.group, cadence:x.cadence, active:'yes', link:'' }; });
+  google.script.run
+    .withSuccessHandler(function(res){ state = JSON.parse(res); render(); applyLayout(); })
+    .withFailureHandler(function(e){ showError((e && e.message) || e, 'saving your starter list'); })
+    .updateHabits(USER, JSON.stringify(list), PIN);
 }
 /* Nothing renders until we know who is looking. */
 window.__BOOT = function () { USER = window.USER; boot(); };
@@ -1100,7 +1170,21 @@ window.__BOOT = function () { USER = window.USER; boot(); };
 <script>
 /* ---- PWA runtime: install, offline, push. None of this was possible on Apps Script. ---- */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function(){ navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function(){}); });
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function(reg){
+      // Adopt a new version the moment it is ready, and reload once so the
+      // running page is never older than the code on the server.
+      reg.addEventListener('updatefound', function(){
+        var w = reg.installing;
+        w && w.addEventListener('statechange', function(){
+          if (w.state === 'installed' && navigator.serviceWorker.controller) w.postMessage('skipWaiting');
+        });
+      });
+      reg.update();
+    }).catch(function(){});
+    var reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if (!reloaded) { reloaded = true; location.reload(); }
+    }); });
 }
 
 /* iOS gives no beforeinstallprompt - the Share > Add to Home Screen path is manual,
