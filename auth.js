@@ -90,6 +90,8 @@
     window.__ME_NAME = prof.display_name;
     ov.remove();
     if (window.__BOOT) window.__BOOT();
+    else if (window.showError) window.showError('The app did not finish loading its own code.', 'startup');
+    else alert('STANDARD did not finish loading. Reload the page.');
   }
 
   window.__signOut = async function () { await sb.auth.signOut(); location.reload(); };
