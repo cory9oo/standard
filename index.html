@@ -1164,7 +1164,47 @@ function useStarter_(){
     .updateHabits(USER, JSON.stringify(list), PIN);
 }
 /* Nothing renders until we know who is looking. */
-window.__BOOT = function () { USER = window.USER; boot(); };
+window.__BOOT = function () {
+  USER = window.USER;
+  try { boot(); } catch (e) { showError(e.message, 'starting up'); }
+  setTimeout(selfCheck_, 5000);
+};
+
+/* SELF-CHECK.
+   An app that fails silently is an app nobody can report a bug on. If five
+   seconds after sign-in there is still nothing on screen, ask the database
+   the same questions a developer would, and print the answers where the
+   person using it can read them. */
+async function selfCheck_(){
+  var box = document.getElementById('list');
+  var painted = box && box.innerHTML.trim().length > 40;
+  if (painted) return;
+  var sb = window.__SB, out = [];
+  function row(k, v){ out.push('<div><b style="color:var(--ink)">' + k + ':</b> ' + v + '</div>'); }
+  try {
+    var ses = await sb.auth.getSession();
+    var u = ses.data.session && ses.data.session.user;
+    row('Signed in', u ? 'yes' : 'NO');
+    row('Account', u ? u.email : '-');
+    var me = window.__getMe && window.__getMe();
+    row('Profile loaded', me ? ('yes, @' + me.handle) : 'NO - this is the problem');
+    var hr = await sb.from('habits').select('id,active', { count: 'exact' });
+    row('Habits your account can read', hr.error ? ('ERROR - ' + hr.error.message) : (hr.data || []).length);
+    var dr = await sb.from('days').select('date');
+    row('Days readable', dr.error ? ('ERROR - ' + dr.error.message) : (dr.data || []).length);
+    var cm = await sb.from('circle_members').select('circle_id');
+    row('Circle membership', cm.error ? ('ERROR - ' + cm.error.message) : (cm.data || []).length);
+    row('Handle the app is asking for', String(USER || '(empty)'));
+    row('state.habits', (window.state && state.habits) ? state.habits.length : 'never set');
+  } catch (e) { row('Self-check crashed', e.message); }
+  var b = document.getElementById('errBar');
+  if (b) {
+    b.innerHTML = '<b>The app loaded but has nothing to show. Here is what it found:</b>' +
+      '<div style="margin-top:8px;line-height:1.7;font-size:12.5px">' + out.join('') + '</div>' +
+      '<div style="opacity:.7;margin-top:8px">Send this to Claude. Tap to dismiss.</div>';
+    b.style.display = '';
+  }
+}
 </script>
 
 <script>
