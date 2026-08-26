@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>STANDARD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0e0f">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<!-- iOS still reads the legacy pair; the manifest alone is not enough on Safari. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="STANDARD">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{--bg:#0e0e0f;--card:#17181a;--card2:#1e2022;--ink:#e9eae8;--ink2:#9a9f9b;--line:#2e3033;--accent:#9e3d44;
+        --gF:#E05252;--gD:#E08B3C;--gC:#E6C84A;--gB:#7FBF5A;--gA:#3FA05A;--gAp:#00E676;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;
+       padding-bottom:calc(92px + env(safe-area-inset-bottom));
+       padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);
+       overscroll-behavior-y:contain;-webkit-font-smoothing:antialiased}
+  /* --- installed-app feel. Every line here is a specific iOS tell. --- */
+  html{overscroll-behavior-y:contain;background:var(--bg)}
+  header{padding-top:calc(18px + env(safe-area-inset-top))}
+  button,.tab,.gear,label,.hbar,.day,nav{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
+       touch-action:manipulation}
+  input,textarea{user-select:text;-webkit-user-select:text;font-size:16px} /* 16px stops iOS zoom-on-focus */
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  header{padding:18px 18px 6px}
+  .hrow{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  h1{font-size:20px;margin:0;letter-spacing:.02em}
+  .sub{color:var(--ink2);font-size:13px}
+  .backlink{color:var(--accent);font-size:13px;font-weight:700;text-decoration:none}
+  .ring{position:relative;width:76px;height:76px;flex:none}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+  .ring .mid small{font-size:9px;color:var(--ink2);font-weight:600}
+  .strip{display:flex;gap:6px;padding:10px 18px 0}
+  .dot{flex:1;text-align:center}
+  .dot .c{height:34px;border-radius:9px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink2)}
+  .dot .w{font-size:8.5px;color:var(--ink2);margin-top:3px;letter-spacing:.03em;line-height:1.3}
+  .dot.sel .c{outline:2px solid var(--accent)}
+  .tabs{display:flex;gap:8px;padding:12px 16px 8px;position:sticky;top:0;background:var(--bg);z-index:5;align-items:center}
+  .tab{flex:1;text-align:center;padding:11px 4px;border:1px solid var(--line);border-radius:11px;color:var(--ink2);font-weight:700;font-size:14px}
+  .tab.on{background:var(--card);color:var(--ink);border-color:var(--accent)}
+  .gear{width:42px;height:42px;flex:none;border:1px solid var(--line);border-radius:11px;background:transparent;color:var(--ink2);font-size:17px}
+  .gear.on{border-color:var(--accent);color:var(--ink)}
+  .group{margin:20px 14px 8px;display:flex;justify-content:space-between;align-items:center;
+         padding:9px 13px;background:#202224;border-left:4px solid var(--accent);border-radius:9px}
+  .group b{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#e6e8e6}
+  .group span{font-size:12px;color:#a8aca9;font-weight:700}
+  .item{display:flex;align-items:center;gap:12px;margin:7px 14px;padding:14px;background:var(--card);
+        border:1px solid #2e3033;border-radius:13px;user-select:none}
+  .item:active{transform:scale(.985)}
+  .item.done{border-color:var(--gA);background:var(--card2)}
+  .item.miss{background:#2a1c1f;border-color:#7c3b3b}
+  .box{width:27px;height:27px;border-radius:9px;border:2px solid var(--ink2);flex:none;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff}
+  .item.done .box{background:var(--gA);border-color:var(--gB)}
+  .item.miss .box{border-color:#c96a6a}
+  .name{flex:1;font-size:15.5px;color:#f2f3f2;overflow-wrap:anywhere}
+  .item.done .name{color:var(--ink2);text-decoration:line-through}
+  .pill{font-size:10px;color:var(--ink2);border:1px solid var(--line);border-radius:7px;padding:2px 7px}
+  .why{flex:none;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+       border:1px solid var(--line);border-radius:10px;text-decoration:none;font-size:15px}
+  .card{margin:10px 16px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:13px}
+  .ratingRow{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .rbtn{width:44px;height:44px;border-radius:11px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:16px;font-weight:800}
+  .rbtn.on{background:var(--accent);border-color:var(--accent)}
+  textarea,input[type=text],input[type=password]{width:100%;background:#121314;border:1px solid var(--line);border-radius:11px;color:var(--ink);padding:11px;font:15px/1.4 inherit}
+  textarea{min-height:66px}
+  #note,#tasks,#prayer{min-height:260px;overflow-y:hidden;resize:vertical}
+  label{font-size:13px;color:#c0c3c0;font-weight:600}
+  .save{position:fixed;bottom:14px;left:16px;right:16px;padding:15px;border:none;border-radius:15px;
+        background:var(--accent);color:#fff;font-size:17px;font-weight:800;box-shadow:0 6px 24px rgba(0,0,0,.45)}
+  .save:disabled{opacity:.6}
+  .toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--gA);color:#fff;
+         padding:9px 18px;border-radius:11px;font-weight:800;display:none;z-index:9}
+  .prog{margin:0 16px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;
+        display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;background:var(--card)}
+  .chip{padding:5px 12px;border-radius:9px;font-weight:800;flex:none}
+  .chipMiss{background:#7c3b3b;color:#ffd9d9;padding:5px 12px;border-radius:9px;font-weight:800;flex:none;display:none}
+  .statRow{display:flex;gap:10px;margin:10px 16px}
+  .stat{flex:1;padding:12px 8px;background:var(--card);border:1px solid var(--line);border-radius:13px;text-align:center;min-width:0}
+  #lifeCard .statRow{flex-wrap:wrap;gap:8px}
+  #lifeCard .stat{flex:1 1 44%}
+  .stat .v{font-size:21px;font-weight:800}
+  .stat .l{font-size:10px;color:var(--ink2);margin-top:2px}
+  .chartCard{margin:10px 16px;padding:13px;background:var(--card);border:1px solid var(--line);border-radius:13px}
+  .chartCard h3{margin:0 0 8px;font-size:14px}
+  canvas{max-height:185px}
+  #lifeCanvas{max-height:none}
+  .calHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+  .calBtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);font-size:17px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg div{padding:8px 14px;font-size:12.5px;font-weight:800;color:var(--ink2)}
+  .seg div.on{background:var(--card2);color:var(--ink)}
+  .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .dow{text-align:center;font-size:10px;color:var(--ink2);padding:2px 0;letter-spacing:.03em}
+  .cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        font-size:11px;font-weight:700;border:1px solid var(--line);color:var(--ink2)}
+  .cell.today{outline:2px solid var(--accent)}
+  .cell .p{font-size:8px;font-weight:600}
+  .legend{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px;font-size:10.5px;color:var(--ink2);align-items:center;font-weight:700}
+  .lg{width:14px;height:14px;border-radius:4px;display:inline-block;vertical-align:-2px;margin-right:3px}
+  .yearBox{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .mini{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px}
+  .mini h4{margin:0 0 5px;font-size:11px;color:#e6e8e6;text-align:center;letter-spacing:.05em}
+  .miniGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .md{aspect-ratio:1;border-radius:2.5px;background:#171819;display:flex;align-items:center;justify-content:center;font-size:5.5px;color:#626569}
+  .hbar{display:flex;align-items:center;gap:10px;margin:9px 0}
+  .hbar .n{flex:1.4;font-size:12.5px;line-height:1.3;overflow-wrap:anywhere}
+  .hbar .track{flex:1;height:9px;background:#121314;border-radius:5px;overflow:hidden}
+  .hbar .fill{height:100%;border-radius:5px}
+  .hbar .v{width:38px;text-align:right;font-size:12px;font-weight:800}
+  .mrow{margin:8px 14px;padding:11px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .mrow .r1{display:flex;gap:8px;margin-bottom:7px}
+  .mrow input[type=text]{padding:9px;font-size:13.5px}
+  .mrow select{background:#121314;border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:8px;font-size:13px}
+  .mrow .r2{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--ink2)}
+  .mrow .del{margin-left:auto;border:1px solid #7c3b3b;background:transparent;color:#e08b8b;border-radius:9px;padding:7px 11px;font-size:12px;font-weight:700}
+  .addBtn{margin:10px 16px;width:calc(100% - 32px);padding:13px;border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--ink2);font-size:14px;font-weight:700}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.14)}100%{transform:scale(1)}}
+  .pop{animation:pop .5s ease}
+  /* ==== Desktop command-center: one screen, three columns; phone keeps tabs ====
+     Column logic (left to right): ACT (today's checklist + rating/why/tasks) ->
+     TRACK (scoreboard, calendar, weakest habits, accountability) ->
+     TRAJECTORY (completion charts, rating charts). JS reparents blocks on resize. */
+  body.desktop{padding-bottom:20px}
+  body.desktop .tabs .tab{display:none}
+  body.desktop .tabs{justify-content:flex-end;position:static}
+  body.desktop #main{display:grid;grid-template-columns:1.05fr 1fr 1.1fr;gap:0 10px;align-items:start;max-width:1780px;margin:0 auto;padding:0 8px}
+  body.desktop #colA,body.desktop #colB,body.desktop #colC{border:1px solid var(--line);border-radius:16px;background:#1a1b1d33;padding-bottom:12px;margin-top:6px}
+  body.desktop #viewToday,body.desktop #viewCal,body.desktop #viewGroup{display:block!important}
+  body.desktop #viewLife{display:block!important}
+  body.desktop #viewStats{display:none!important}
+  body.desktop #colA .strip{margin:2px 16px 8px;padding:0}
+  body.desktop #colB .group:first-child,body.desktop #colC .group:first-child{margin-top:10px}
+  body.desktop #viewEdit{grid-column:1/-1;display:none;max-width:820px;margin:0 auto;justify-self:center;width:100%}
+  body.desktop.editing #viewEdit{display:block!important}
+  body.desktop.editing #colA,body.desktop.editing #colB,body.desktop.editing #colC,body.desktop.editing #viewLife{display:none!important}
+  body.desktop header{max-width:1780px;margin:0 auto}
+</style>
+</head>
+<body>
+<div id="toast" class="toast">Saved</div>
+<header>
+  <div class="hrow">
+    <div>
+      <h1 id="who">HABIT TRACKER</h1>
+      <div class="sub" id="dateLabel"></div>
+      <a class="backlink" id="backToday" style="display:none" onclick="loadDay(TODAY);return false" href="#">&#8592; back to today</a>
+    </div>
+    <button onclick="openGuide_()" title="How it works"
+      style="flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink2);font-size:13px;font-weight:700;margin-right:2px">?</button>
+    <div class="ring" id="ringWrap">
+      <svg width="76" height="76" viewBox="0 0 76 76">
+        <circle cx="38" cy="38" r="32" fill="none" stroke="#27292b" stroke-width="7"/>
+        <circle id="ringArc" cx="38" cy="38" r="32" fill="none" stroke="#3FA05A" stroke-width="7"
+                stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="201"/>
+      </svg>
+      <div class="mid"><span id="ringPct">0%</span><small id="ringCt">0/0</small></div>
+    </div>
+  </div>
+</header>
+<div class="strip" id="strip"></div>
+<div class="tabs">
+  <div class="tab on" id="tabToday" onclick="show('today')">Day</div>
+  <div class="tab" id="tabProg" onclick="show('progress')">Progress</div>
+  <div class="tab" id="tabGroup" onclick="show('group')">Group</div>
+  <button class="gear" id="tabEdit" onclick="show('edit')">&#9998;</button>
+</div>
+
+<div id="main">
+<div id="viewToday">
+  <div class="prog"><span id="progLabel">Completion</span>
+    <span class="chipMiss" id="missChip"></span>
+    <span class="chip" id="pct">0%</span></div>
+  <!-- rating/why/tasks sits ABOVE the checklist: journaled first thing + edited all day -->
+  <div class="group"><b>Journal</b><span>rate &middot; why &middot; tasks</span></div>
+  <div class="card" id="ratingCard" style="margin-top:8px">
+    <label>Rate the day (1-10)</label>
+    <div class="ratingRow" id="ratingRow"></div>
+    <label>Why was it that number?</label>
+    <textarea id="note" placeholder="Because..." oninput="markDirty()"></textarea>
+    <label>Tasks completed today</label>
+    <textarea id="tasks" placeholder="- Closed X&#10;- Called Y" oninput="markDirty()"></textarea>
+    <label>Prayer journal</label>
+    <textarea id="prayer" placeholder="Father..." oninput="markDirty()"></textarea>
+    <div class="sub" id="saveState" style="margin-top:8px;text-align:right">auto-saves</div>
+  </div>
+  <div id="list"></div>
+</div>
+
+<div id="viewCal" style="display:none">
+  <div class="chartCard">
+    <div class="calHead">
+      <button class="calBtn" id="calPrev" onclick="calMove(-1)">&#8249;</button>
+      <h3 id="calTitle" style="margin:0"></h3>
+      <div class="seg"><div id="segM" class="on" onclick="calMode('m')">Month</div><div id="segY" onclick="calMode('y')">Year</div></div>
+      <button class="calBtn" id="calNext" onclick="calMove(1)">&#8250;</button>
+    </div>
+    <div class="sub" style="margin-bottom:8px" id="calHint">Tap a day to open it - view and edit that day's checklist.</div>
+    <div class="calGrid" id="calGrid"></div>
+    <div class="yearBox" id="yearBox" style="display:none"></div>
+    <div class="legend">
+      <span><span class="lg" style="background:var(--gF)"></span>F &le;59</span>
+      <span><span class="lg" style="background:var(--gD)"></span>D 60-69</span>
+      <span><span class="lg" style="background:var(--gC)"></span>C 70-79</span>
+      <span><span class="lg" style="background:var(--gB)"></span>B 80-89</span>
+      <span><span class="lg" style="background:var(--gA)"></span>A 90-99</span>
+      <span><span class="lg" style="background:var(--gAp)"></span>A+ 100</span>
+    </div>
+  </div>
+</div>
+
+<div id="viewStats" style="display:none">
+  <div class="group" id="grpScore"><b>Scoreboard</b><span>where you stand</span></div>
+  <div class="statRow" id="sbRow1">
+    <div class="stat"><div class="v" id="stCur">-</div><div class="l">CURRENT STREAK (80%+ DAYS)</div></div>
+    <div class="stat"><div class="v" id="stBest">-</div><div class="l">BEST STREAK</div></div>
+  </div>
+  <div class="statRow" id="sbRow2">
+    <div class="stat"><div class="v" id="s30">-</div><div class="l">30-DAY AVG %</div></div>
+    <div class="stat"><div class="v" id="sYr">-</div><div class="l">YEAR AVG %</div></div>
+    <div class="stat"><div class="v" id="sRate">-</div><div class="l">AVG DAY RATING</div></div>
+  </div>
+
+  <div class="group" id="grpComp"><b>Completion</b><span>what you did</span></div>
+  <div class="chartCard" id="cardComp">
+    <div class="calHead">
+      <button class="calBtn" onclick="compMove(-1)">&#8249;</button>
+      <h3 id="compTitle" style="margin:0">Daily completion %</h3>
+      <button class="calBtn" onclick="compMove(1)">&#8250;</button>
+    </div>
+    <div class="sub" style="margin-bottom:6px">One point per day - tap a point to open that day.</div>
+    <canvas id="cDaily"></canvas>
+  </div>
+  <div class="chartCard" id="cardCompM"><h3 id="mTitle">Monthly completion % (Jan-Dec)</h3><canvas id="cMonthly"></canvas></div>
+  <div class="chartCard" id="cardCompY"><h3>Yearly completion %</h3><div id="yearlyTiles" class="statRow" style="margin:0"></div></div>
+
+  <div class="group" id="grpRate"><b>Day rating</b><span>how the days felt</span></div>
+  <div class="chartCard" id="cardRate">
+    <div class="calHead">
+      <button class="calBtn" onclick="ratingMove(-1)">&#8249;</button>
+      <h3 id="ratingTitle" style="margin:0">Daily rating</h3>
+      <button class="calBtn" onclick="ratingMove(1)">&#8250;</button>
+    </div>
+    <div class="sub" style="margin-bottom:6px">One point per day - tap a point to open that day and read your why.</div>
+    <canvas id="cRating"></canvas>
+  </div>
+  <div class="chartCard" id="cardRateM"><h3 id="mrTitle">Monthly avg rating (Jan-Dec)</h3><canvas id="cRatingM"></canvas></div>
+
+  <div class="group" id="grpHabits"><b>Habits</b><span>where the fight is</span></div>
+  <div class="chartCard" id="cardHabits"><h3>Weakest habits (last 30 days)</h3><div id="habitBars"></div></div>
+
+</div>
+
+<div id="viewLife" style="display:none">
+  <div class="group" id="grpLife"><b>Life Visualized</b><span id="lifeSub">100 years of days</span></div>
+  <div class="chartCard" id="lifeCard">
+    <div class="statRow" style="margin:0 0 10px">
+      <div class="stat"><div class="v" id="lifeLived" style="color:var(--gF)">-</div><div class="l">DAYS LIVED</div></div>
+      <div class="stat"><div class="v" id="lifeLeft" style="color:var(--gA)">-</div><div class="l">DAYS LEFT</div></div>
+      <div class="stat"><div class="v" id="lifePctL" style="color:var(--gF)">-</div><div class="l">% LIVED</div></div>
+      <div class="stat"><div class="v" id="lifePctR" style="color:var(--gA)">-</div><div class="l">% LEFT</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap">
+      <label style="flex:none;font-weight:700">Your birthday</label>
+      <input type="text" id="lifeBirth" placeholder="03/18/2001" style="max-width:140px;padding:8px" onchange="birthChanged_()">
+      <span class="sub" id="lifeBirthState">chart is drawn from this date</span>
+    </div>
+    <canvas id="lifeCanvas"></canvas>
+    <div class="sub" style="margin-top:8px">One row per year of life (age 0-99), one dot per day, anchored on your birthday.
+    Dim red = days already spent. Colored = days you tracked here, painted with their grade. Dark = the days still ahead. Advances by itself, every day.</div>
+  </div>
+</div>
+
+<div id="viewGroup" style="display:none">
+  <div class="group" id="grpGroup"><b>Group</b><span>iron sharpens iron</span></div>
+  <div id="groupList"></div>
+  <div class="sub" style="margin:4px 18px 12px">Only completion %s are shared. Journals, whys, and tasks stay private to each person.</div>
+</div>
+
+<div id="viewEdit" style="display:none">
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+    <div><b style="color:var(--ink)">Signed in</b>
+      <div class="sub" id="whoAmI" style="margin-top:2px"></div></div>
+    <button class="save" style="position:static;flex:none;padding:10px 16px;background:var(--card2);color:var(--ink)"
+            onclick="window.__signOut()">Sign out</button>
+  </div>
+  <div class="card" style="font-size:13px;color:var(--ink2);display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <span>Edit anything - wording, category, cadence, link, on/off. <b style="color:var(--ink)">Everything auto-saves.</b></span>
+    <span class="sub" id="editSaveState" style="flex:none">auto-saves</span>
+  </div>
+  <div id="editList"></div>
+  <button class="addBtn" onclick="addHabit()">+ Add habit</button>
+</div>
+
+<div id="joinGate" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:60;padding:34px 22px;overflow:auto">
+  <div style="max-width:440px;margin:0 auto">
+    <h1 style="margin-bottom:2px">HABIT TRACKER</h1>
+    <div class="sub" style="margin-bottom:16px">Join the group - 60 seconds.</div>
+    <div class="card" style="margin:0 0 12px">
+      <label>Pick your name (letters/numbers, this becomes your link)</label>
+      <input type="text" id="jName" placeholder="andrew" style="margin-bottom:12px">
+      <label>Display name (what the group sees)</label>
+      <input type="text" id="jDisplay" placeholder="Andrew" style="margin-bottom:12px">
+      <label>Create a 4-digit PIN (keeps your tracker private)</label>
+      <input type="password" id="jPin" inputmode="numeric" maxlength="4" style="margin-bottom:12px">
+      <label>Your email (your private Habit Journal doc gets shared here)</label>
+      <input type="text" id="jEmail" placeholder="you@gmail.com" style="margin-bottom:12px">
+      <label>Your birthday (drives your private Life Visualized view)</label>
+      <input type="text" id="jBirth" placeholder="03/18/2001" style="margin-bottom:12px">
+      <label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45">
+        <input type="checkbox" id="jPriv" style="width:auto;margin-top:2px">
+        <span><b style="color:var(--ink)">Privacy:</b> your journal, whys, tasks, and birthday are yours alone - protected by your PIN.
+        The group sees your habit list, checkmarks, and completion percentages - never your words. Same both directions.</span>
+      </label>
+      <button class="save" style="position:static;width:100%;margin-top:14px" onclick="joinSubmit()">Create my tracker</button>
+      <div class="sub" id="jErr" style="margin-top:10px;color:#e08b8b"></div>
+    </div>
+    <div class="card" style="margin:0 0 12px">
+      <label style="font-weight:700;color:var(--ink)">Already joined? Open your tracker</label>
+      <input type="text" id="lName" placeholder="your name" style="margin:10px 0">
+      <input type="password" id="lPin" inputmode="numeric" maxlength="4" placeholder="your 4-digit PIN" style="margin-bottom:12px">
+      <button class="save" style="position:static;width:100%" onclick="loginGo()">Open my tracker</button>
+      <div class="sub" id="lErr" style="margin-top:8px;color:#e08b8b"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="./sb-api.js"></script>
+<script src="./auth.js"></script>
+<script>
+/* Identity comes from the signed-in session, not from a link parameter.
+   auth.js sets window.USER before it calls __BOOT(). */
+var USER = window.USER || '';
+var JOIN = false;
+var BASE_URL = location.origin + location.pathname;
+var K = '';
+var PIN = K;   // personal-link token auto-unlocks; falls back to a stored PIN
+if (!PIN) { try { PIN = localStorage.getItem('ht_pin_' + USER) || ''; } catch (e) {} }
+var state = {habits: [], day: {checked: {}, rating: '', note: '', tasks: '', prayer: ''}, weekDone: {}, last7: []};
+var charts = {}, statsCache = null, calYM = null, calViewMode = 'm', editCache = null, lastPct = -1, curView = 'today';
+var WDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var WSHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var GROUPS_ORDER = ['Morning','Afternoon','Night','Standards','Weekly'];
+
+function key(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+var TODAY = key(new Date());
+var selDate = TODAY;
+
+/* Letter-grade colors: F red, D orange, C yellow, B light green, A green, A+ bright green */
+function band(p){
+  if (p === null || p === undefined) return [null, null];
+  if (p >= 100) return ['#00E676', '#00311a'];
+  if (p >= 90)  return ['#3FA05A', '#fff'];
+  if (p >= 80)  return ['#7FBF5A', '#12300f'];
+  if (p >= 70)  return ['#E6C84A', '#3a3005'];
+  if (p >= 60)  return ['#E08B3C', '#3a2305'];
+  return ['#E05252', '#fff'];
+}
+
+function setHeaderDate(){
+  var d = new Date(selDate + 'T12:00:00');
+  document.getElementById('dateLabel').textContent = WDAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  document.getElementById('backToday').style.display = selDate === TODAY ? 'none' : '';
+  document.getElementById('progLabel').textContent = selDate === TODAY ? 'Completion today' : 'Completion - ' + WSHORT[d.getDay()] + ' ' + (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+function ring(p){
+  var arc = document.getElementById('ringArc');
+  var c = band(p);
+  arc.setAttribute('stroke', c[0]);
+  arc.setAttribute('stroke-dashoffset', String(201 - 201 * p / 100));
+  document.getElementById('ringPct').textContent = p + '%';
+  if (p !== lastPct && p === 100) { var w = document.getElementById('ringWrap'); w.classList.remove('pop'); void w.offsetWidth; w.classList.add('pop'); }
+  lastPct = p;
+}
+
+function renderStrip(){
+  var html = '';
+  (state.last7 || []).forEach(function(d){
+    var c = band(d.pct);
+    var style = d.pct === null ? '' : 'style="background:' + c[0] + ';color:' + c[1] + ';border-color:transparent"';
+    var parts = d.date.split('-');
+    var mdY = Number(parts[1]) + '/' + Number(parts[2]) + '/' + parts[0].slice(2);
+    html += '<div class="dot' + (d.date === selDate ? ' sel' : '') + '" onclick="loadDay(\'' + d.date + '\')"><div class="c" ' + style + '>' +
+            (d.pct === null ? '&middot;' : d.pct) + '</div><div class="w">' + WSHORT[d.dow] + '<br>' + mdY + '</div></div>';
+  });
+  document.getElementById('strip').innerHTML = html;
+}
+
+function render(){
+  setHeaderDate();
+  var groups = {};
+  state.habits.forEach(function(h){ (groups[h.group] = groups[h.group] || []).push(h); });
+  var html = '';
+  GROUPS_ORDER.concat(Object.keys(groups).filter(function(g){ return GROUPS_ORDER.indexOf(g) < 0; })).forEach(function(g){
+    if (!groups[g]) return;
+    var done = groups[g].filter(function(h){ return h.cadence === 'weekly' ? (state.weekDone[h.id] || state.day.checked[h.id]) : state.day.checked[h.id]; }).length;
+    html += '<div class="group"><b>' + g + '</b><span>' + done + '/' + groups[g].length + '</span></div>';
+    groups[g].forEach(function(h){
+      var isDone = h.cadence === 'weekly' ? (state.weekDone[h.id] || state.day.checked[h.id]) : state.day.checked[h.id];
+      var missCls = (!isDone && h.cadence !== 'weekly') ? ' miss' : '';
+      html += '<div class="item' + (isDone ? ' done' : '') + missCls + '" onclick="toggle(\'' + h.id + '\')">' +
+              '<div class="box">' + (isDone ? '&#10003;' : '') + '</div><div class="name">' + h.name + '</div>' +
+              (h.cadence === 'weekly' ? '<div class="pill">WEEKLY</div>' : '') +
+              (h.link ? '<a class="why" href="' + h.link + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">&#128279;</a>' : '') +
+              '</div>';
+    });
+  });
+  document.getElementById('list').innerHTML = html;
+  var daily = state.habits.filter(function(h){ return h.cadence === 'daily'; });
+  var done = daily.filter(function(h){ return state.day.checked[h.id]; }).length;
+  var p = Math.round(100 * done / Math.max(daily.length, 1));
+  ring(p);
+  document.getElementById('ringCt').textContent = done + '/' + daily.length;
+  var el = document.getElementById('pct'), c = band(p);
+  el.textContent = done + '/' + daily.length + ' - ' + p + '%';
+  el.style.background = c[0]; el.style.color = c[1];
+  var missChip = document.getElementById('missChip');
+  var missed = daily.length - done;
+  if (missed > 0) { missChip.style.display = ''; missChip.textContent = 'Missed ' + missed; }
+  else missChip.style.display = 'none';
+  renderStrip();
+  var rr = '';
+  for (var i = 1; i <= 10; i++) rr += '<button class="rbtn' + (Number(state.day.rating) === i ? ' on' : '') + '" onclick="setR(' + i + ')">' + i + '</button>';
+  document.getElementById('ratingRow').innerHTML = rr;
+  /* never repaint a textarea the user is typing in - it would reset text + cursor */
+  var noteEl = document.getElementById('note'), tasksEl = document.getElementById('tasks'), prayerEl = document.getElementById('prayer');
+  if (document.activeElement !== noteEl) noteEl.value = state.day.note || '';
+  if (document.activeElement !== tasksEl) tasksEl.value = state.day.tasks || '';
+  if (document.activeElement !== prayerEl) prayerEl.value = state.day.prayer || '';
+  autoGrow_(noteEl); autoGrow_(tasksEl); autoGrow_(prayerEl);
+}
+
+/* ===== instant auto-save engine =====
+   Every tap saves: optimistic UI + local cache sync immediately, server write debounced 350ms,
+   and a hard flush before any view change / day change / app background. No Save button. */
+var dirty = false, saving = false, t = null;
+function autoGrow_(el){
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.max(el.scrollHeight + 2, 260) + 'px';   // grows with the text, never shrinks below default
+}
+function markDirty(){
+  /* textareas are the source of truth on every keystroke - state tracks them instantly,
+     so a re-render (tapping a habit / rating mid-typing) can never wipe typed text */
+  var n = document.getElementById('note'), tk = document.getElementById('tasks'), pr = document.getElementById('prayer');
+  if (n) { state.day.note = n.value; autoGrow_(n); }
+  if (tk) { state.day.tasks = tk.value; autoGrow_(tk); }
+  if (pr) { state.day.prayer = pr.value; autoGrow_(pr); }
+  dirty = true; setSaveState('...'); clearTimeout(t); t = setTimeout(flushSave, 800);
+}
+function setSaveState(txt){ var el = document.getElementById('saveState'); if (el) el.textContent = txt; }
+function loadDay(date){
+  flushSave(function(){
+    selDate = date;
+    google.script.run.withSuccessHandler(function(res){ state = JSON.parse(res); render(); show('today'); }).getState(USER, selDate, PIN);
+  });
+}
+function deskRefresh_(){   // one-screen mode: calendar + charts track every input
+  if (isDesktop() && statsCache) {
+    renderCalRoot(statsCache);
+    clearTimeout(window._chT); window._chT = setTimeout(function(){ renderCharts(statsCache); }, 900);
+  }
+}
+function toggle(id){
+  state.day.checked[id] = !state.day.checked[id];
+  dirty = true; syncLocal(); render();
+  deskRefresh_();
+  clearTimeout(t); t = setTimeout(flushSave, 350);
+}
+function setR(n){ state.day.rating = n; dirty = true; syncLocal(); render(); deskRefresh_(); clearTimeout(t); t = setTimeout(flushSave, 350); }
+function syncLocal(){
+  var daily = state.habits.filter(function(h){ return h.cadence === 'daily'; });
+  var done = daily.filter(function(h){ return state.day.checked[h.id]; }).length;
+  var p = Math.round(100 * done / Math.max(daily.length, 1));
+  (state.last7 || []).forEach(function(d){ if (d.date === selDate) d.pct = p; });
+  if (statsCache) {   // calendar + trends reflect the tap instantly
+    var hit = null;
+    statsCache.daily.forEach(function(d){ if (d.date === selDate) hit = d; });
+    if (hit) { hit.pct = p; if (state.day.rating) hit.rating = Number(state.day.rating); }
+    else { statsCache.daily.push({ date: selDate, pct: p, rating: Number(state.day.rating) || null });
+           statsCache.daily.sort(function(a, b){ return a.date < b.date ? -1 : 1; }); }
+  }
+}
+function flushSave(cb){
+  cb = cb || function(){};
+  if (!dirty) return cb();
+  if (saving) { setTimeout(function(){ flushSave(cb); }, 250); return; }
+  dirty = false; saving = true;
+  state.day.note = document.getElementById('note').value;
+  state.day.tasks = document.getElementById('tasks').value;
+  state.day.prayer = document.getElementById('prayer').value;
+  setSaveState('saving...');
+  var payloadDate = selDate;
+  google.script.run.withSuccessHandler(function(res){
+    saving = false;
+    if (payloadDate === selDate && !dirty) { state = JSON.parse(res); render(); }
+    setSaveState('saved ✓');
+    cb();
+  }).withFailureHandler(function(){
+    saving = false; dirty = true; setSaveState('offline - will retry');
+    setTimeout(function(){ flushSave(); }, 2500);
+    cb();
+  }).saveDay(USER, payloadDate, JSON.stringify(state.day.checked), state.day.rating, state.day.note, state.day.tasks, state.day.prayer, PIN);
+}
+document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') { flushSave(); flushHabits(); } });
+
+function isDesktop(){ return window.innerWidth >= 1100; }
+/* Desktop reparenting: move blocks into 3 purpose columns (ACT | TRACK | TRAJECTORY),
+   remember where each came from, and restore the phone DOM exactly on resize down. */
+var deskMoved = [];
+function moveTo_(col, id){
+  var n = document.getElementById(id);
+  if (!n) return;
+  deskMoved.push({ n: n, p: n.parentNode, s: n.nextSibling });
+  col.appendChild(n);
+}
+function buildDesk_(){
+  if (document.getElementById('colA')) return;
+  var main = document.getElementById('main');
+  ['colA','colB','colC'].forEach(function(id){
+    var c = document.createElement('div'); c.id = id; main.appendChild(c);
+  });
+  var A = document.getElementById('colA'), B = document.getElementById('colB'), C = document.getElementById('colC');
+  moveTo_(A, 'strip');                 // last-7 jump strip lives with the action column
+  moveTo_(A, 'viewToday');             // ACT: checklist + rating/why/tasks
+  ['grpScore','sbRow1','sbRow2','viewCal','grpHabits','cardHabits','viewGroup']
+    .forEach(function(id){ moveTo_(B, id); });   // TRACK: standing, calendar, weak spots, accountability
+  ['grpComp','cardComp','cardCompM','cardCompY','grpRate','cardRate','cardRateM','viewLife']
+    .forEach(function(id){ moveTo_(C, id); });   // TRAJECTORY: completion + rating over time, then LIFE fills the column
+}
+function tearDesk_(){
+  for (var i = deskMoved.length - 1; i >= 0; i--) {
+    var m = deskMoved[i]; m.p.insertBefore(m.n, m.s);
+  }
+  deskMoved = [];
+  ['colA','colB','colC'].forEach(function(id){
+    var c = document.getElementById(id); if (c) c.remove();
+  });
+}
+function applyLayout(){
+  var wasDesktop = document.body.classList.contains('desktop');
+  var desk = isDesktop();
+  document.body.classList.toggle('desktop', desk);
+  if (desk) {
+    document.body.classList.remove('editing');
+    buildDesk_();
+    withStats(function(s){ renderCalRoot(s); renderCharts(s); renderLife(); });
+    renderGroup();
+  } else if (wasDesktop) {
+    document.body.classList.remove('editing');
+    tearDesk_();
+    show(curView === 'edit' ? 'today' : curView);
+  }
+}
+window.addEventListener('resize', function(){ clearTimeout(window._rzT); window._rzT = setTimeout(applyLayout, 250); });
+
+function show(which){
+  if (which !== 'today') flushSave();
+  if (which !== 'edit' && curView === 'edit') flushHabits();
+  if (isDesktop()) {   // one-screen mode: only the editor toggles; everything else is always on screen
+    if (which === 'edit') {
+      var editing = document.body.classList.toggle('editing');
+      document.getElementById('tabEdit').className = 'gear' + (editing ? ' on' : '');
+      if (editing) loadEditor();
+      else { curView = 'today'; withStats(function(s){ renderCalRoot(s); renderCharts(s); }); render(); }
+      return;
+    }
+    curView = which;
+    return;
+  }
+  curView = which;
+  ['Today','Prog','Group'].forEach(function(n){ document.getElementById('tab' + n).className = 'tab'; });
+  document.getElementById('tabEdit').className = 'gear';
+  var prog = which === 'progress';
+  document.getElementById('viewToday').style.display = which === 'today' ? '' : 'none';
+  document.getElementById('viewCal').style.display = prog ? '' : 'none';
+  document.getElementById('viewStats').style.display = prog ? '' : 'none';
+  document.getElementById('viewLife').style.display = prog ? '' : 'none';
+  document.getElementById('viewGroup').style.display = which === 'group' ? '' : 'none';
+  document.getElementById('viewEdit').style.display = which === 'edit' ? '' : 'none';
+  if (which === 'edit') document.getElementById('tabEdit').className = 'gear on';
+  else document.getElementById('tab' + (which === 'today' ? 'Today' : which === 'group' ? 'Group' : 'Prog')).className = 'tab on';
+  if (which === 'today') render();
+  else if (prog) withStats(function(st){ renderCalRoot(st); renderCharts(st); renderLife(); });
+  else if (which === 'group') renderGroup();
+  else if (which === 'edit') { var w=document.getElementById('whoAmI'); if(w) w.textContent=(window.__ME_NAME||'')+' - @'+(window.USER||''); loadEditor(); }
+}
+function withStats(fn){
+  if (statsCache) return fn(statsCache);
+  google.script.run.withSuccessHandler(function(res){ statsCache = JSON.parse(res); fn(statsCache); }).getStats(USER, PIN);
+}
+function dayMap(s){ var m = {}; s.daily.forEach(function(d){ m[d.date] = d; }); return m; }
+function streaks(s){
+  var best = 0, run = 0, prev = null;
+  s.daily.forEach(function(d){
+    var dt = new Date(d.date + 'T12:00:00');
+    var contiguous = prev && (dt - prev) === 86400000;
+    run = (d.pct >= 80) ? (contiguous ? run + 1 : 1) : 0;
+    if (run > best) best = run;
+    prev = dt;
+  });
+  var m = dayMap(s), c = new Date(), cur = 0;
+  while (true) {
+    var k = key(c);
+    var d = m[k];
+    if (d && d.pct >= 80) { cur++; c.setDate(c.getDate() - 1); }
+    else if (k === TODAY) { c.setDate(c.getDate() - 1); }
+    else break;
+  }
+  return [cur, best];
+}
+
+/* ==== Calendar (Month / Year) ==== */
+function calMode(mode){
+  calViewMode = mode;
+  document.getElementById('segM').className = mode === 'm' ? 'on' : '';
+  document.getElementById('segY').className = mode === 'y' ? 'on' : '';
+  withStats(renderCalRoot);
+}
+function renderCalRoot(s){
+  if (!calYM) { var n2 = new Date(); calYM = [n2.getFullYear(), n2.getMonth()]; }
+  if (calViewMode === 'm') { document.getElementById('calGrid').style.display = ''; document.getElementById('yearBox').style.display = 'none';
+    document.getElementById('calHint').textContent = 'Tap a day to open it - view and edit that day\'s checklist.'; renderMonth(s); }
+  else { document.getElementById('calGrid').style.display = 'none'; document.getElementById('yearBox').style.display = '';
+    document.getElementById('calHint').textContent = 'All twelve months - tap a month to zoom in.'; renderYear(s); }
+}
+function renderMonth(s){
+  document.getElementById('calTitle').textContent = MONTHS[calYM[1]] + ' ' + calYM[0];
+  var m = dayMap(s);
+  var first = new Date(calYM[0], calYM[1], 1);
+  var nDays = new Date(calYM[0], calYM[1] + 1, 0).getDate();
+  var html = '';
+  WSHORT.forEach(function(w){ html += '<div class="dow">' + w + '</div>'; });
+  for (var b = 0; b < first.getDay(); b++) html += '<div></div>';
+  for (var d = 1; d <= nDays; d++) {
+    var k = calYM[0] + '-' + String(calYM[1] + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    var rec = m[k];
+    var today = k === TODAY ? ' today' : '';
+    var click = ' onclick="loadDay(\'' + k + '\')"';
+    if (rec) {
+      var c = band(rec.pct);
+      html += '<div class="cell' + today + '"' + click + ' style="background:' + c[0] + ';color:' + c[1] + ';border-color:transparent"><div>' + d + '</div><div class="p">' + rec.pct + '%</div></div>';
+    } else html += '<div class="cell' + today + '"' + click + '><div>' + d + '</div></div>';
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+function renderYear(s){
+  var y = calYM[0];
+  document.getElementById('calTitle').textContent = String(y);
+  var m = dayMap(s);
+  var html = '';
+  for (var mo = 0; mo < 12; mo++) {
+    var first = new Date(y, mo, 1);
+    var nDays = new Date(y, mo + 1, 0).getDate();
+    var mg = '';
+    for (var b = 0; b < first.getDay(); b++) mg += '<div class="md" style="background:transparent"></div>';
+    for (var d = 1; d <= nDays; d++) {
+      var k = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      var rec = m[k];
+      if (rec) { var c = band(rec.pct); mg += '<div class="md" style="background:' + c[0] + '"></div>'; }
+      else mg += '<div class="md">' + d + '</div>';
+    }
+    html += '<div class="mini" onclick="zoomMonth(' + mo + ')"><h4>' + MONTHS[mo].slice(0, 3) + '</h4><div class="miniGrid">' + mg + '</div></div>';
+  }
+  document.getElementById('yearBox').innerHTML = html;
+}
+function zoomMonth(mo){ calYM[1] = mo; calMode('m'); }
+function calMove(dir){
+  if (calViewMode === 'm') {
+    calYM[1] += dir;
+    if (calYM[1] < 0) { calYM[1] = 11; calYM[0]--; }
+    if (calYM[1] > 11) { calYM[1] = 0; calYM[0]++; }
+  } else calYM[0] += dir;
+  withStats(renderCalRoot);
+}
+
+/* ==== Trends ==== */
+function line(id, labels, data, color, max, opts){
+  if (typeof Chart === 'undefined') return;
+  opts = opts || {};
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels: labels, datasets: [{ data: data, borderColor: color, borderWidth: 2,
+      pointRadius: opts.pointRadius || 2, pointHoverRadius: (opts.pointRadius || 2) + 3,
+      pointBackgroundColor: color, tension: .25, spanGaps: true, clip: false }] },
+    options: { plugins: { legend: { display: false } }, animation: false,
+      onClick: opts.onClick || null,
+      /* clip:false + top padding: a 10/10 or 100% point draws fully into the padding
+         instead of being cut off, while the axis still reads a clean 0..max */
+      layout: { padding: { top: 10 } },
+      scales: { y: { min: opts.yMin !== undefined ? opts.yMin : 0, max: max,
+                     grid: { color: '#27292b' },
+                     ticks: { color: '#93a098' } },
+                x: { grid: { display: false }, ticks: { color: '#93a098', maxTicksLimit: opts.maxTicks || 12 } } } }
+  });
+}
+
+/* Month-scoped day charts (rating + completion): a point per day, tap a point -> open that day.
+   NOTE: y-axis headroom + top padding keep 10/10 and 100% points from clipping at the top. */
+function monthDays(ym, m, field){
+  var nDays = new Date(ym[0], ym[1] + 1, 0).getDate();
+  var labels = [], data = [], dates = [];
+  for (var d = 1; d <= nDays; d++) {
+    var k = ym[0] + '-' + String(ym[1] + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    labels.push(d); dates.push(k);
+    data.push(m[k] && m[k][field] !== null && m[k][field] !== undefined ? m[k][field] : null);
+  }
+  return { labels: labels, data: data, dates: dates };
+}
+var ratingYM = null, compYM = null;
+function ratingMove(dir){ ratingYM = bumpYM(ratingYM, dir); withStats(renderRatingMonth); }
+function compMove(dir){ compYM = bumpYM(compYM, dir); withStats(renderCompMonth); }
+function bumpYM(ym, dir){
+  ym[1] += dir;
+  if (ym[1] < 0) { ym[1] = 11; ym[0]--; }
+  if (ym[1] > 11) { ym[1] = 0; ym[0]++; }
+  return ym;
+}
+function renderRatingMonth(s){
+  if (!ratingYM) { var n = new Date(); ratingYM = [n.getFullYear(), n.getMonth()]; }
+  document.getElementById('ratingTitle').textContent = MONTHS[ratingYM[1]] + ' ' + ratingYM[0];
+  var md = monthDays(ratingYM, dayMap(s), 'rating');
+  line('cRating', md.labels, md.data, '#3FA05A', 10, {
+    pointRadius: 5, maxTicks: 16,
+    onClick: function(evt, els){ if (els && els.length) loadDay(md.dates[els[0].index]); }
+  });
+}
+function renderCompMonth(s){
+  if (!compYM) { var n = new Date(); compYM = [n.getFullYear(), n.getMonth()]; }
+  document.getElementById('compTitle').textContent = MONTHS[compYM[1]] + ' ' + compYM[0];
+  var md = monthDays(compYM, dayMap(s), 'pct');
+  line('cDaily', md.labels, md.data, '#4f8f63', 100, {
+    pointRadius: 5, maxTicks: 16,
+    onClick: function(evt, els){ if (els && els.length) loadDay(md.dates[els[0].index]); }
+  });
+}
+function fullYearMonthly(s, field){
+  var y = new Date().getFullYear();
+  var by = {}; s.monthly.forEach(function(mm){ by[mm.k] = mm; });
+  var labels = [], data = [];
+  for (var mo = 1; mo <= 12; mo++) {
+    var k = y + '-' + String(mo).padStart(2, '0');
+    labels.push(MONTHS[mo - 1].slice(0, 3));
+    data.push(by[k] ? by[k][field] : null);
+  }
+  return { labels: labels, data: data };
+}
+function renderCharts(s){
+  var st = streaks(s);
+  document.getElementById('stCur').textContent = st[0] + 'd';
+  document.getElementById('stBest').textContent = st[1] + 'd';
+  var last60 = s.daily.slice(-60), last30 = s.daily.slice(-30);
+  var a30 = last30.length ? Math.round(last30.reduce(function(x, d){ return x + d.pct; }, 0) / last30.length) : 0;
+  var el30 = document.getElementById('s30'), c30 = band(a30);
+  el30.textContent = a30 + '%'; el30.style.color = c30[0];
+  var yr = s.yearly[s.yearly.length - 1];
+  document.getElementById('sYr').textContent = yr ? yr.pct + '%' : '-';
+  var rts = s.daily.filter(function(d){ return d.rating; });
+  document.getElementById('sRate').textContent = rts.length ?
+    (Math.round(10 * rts.reduce(function(x, d){ return x + d.rating; }, 0) / rts.length) / 10) : '-';
+  renderCompMonth(s);
+  var fm = fullYearMonthly(s, 'pct');
+  line('cMonthly', fm.labels, fm.data, '#4f8f63', 100);
+  var yt = '';
+  s.yearly.forEach(function(yy){
+    var c = band(yy.pct);
+    yt += '<div class="stat"><div class="v" style="color:' + c[0] + '">' + yy.pct + '%</div><div class="l">' + yy.k + (yy.rating ? ' - RATING ' + yy.rating : '') + '</div></div>';
+  });
+  document.getElementById('yearlyTiles').innerHTML = yt || '<div class="sub">No data yet</div>';
+  renderRatingMonth(s);
+  var fr = fullYearMonthly(s, 'rating');
+  line('cRatingM', fr.labels, fr.data, '#3FA05A', 10);
+  var hb = '';
+  (s.perHabit || []).slice(0, 8).forEach(function(h){
+    var c = band(h.pct);
+    hb += '<div class="hbar"><div class="n">' + h.name + '</div>' +
+          '<div class="track"><div class="fill" style="width:' + h.pct + '%;background:' + c[0] + '"></div></div>' +
+          '<div class="v">' + h.pct + '%</div></div>';
+  });
+  document.getElementById('habitBars').innerHTML = hb || '<div class="sub">Log a few days first.</div>';
+}
+
+/* ==== Manage / edit habits (front-end editable, SlowBooks principle) ====
+   Auto-saves exactly like the day view: every keystroke/change debounced, structural
+   changes (add/delete/toggle/category/cadence) saved fast, flush on leaving the tab. */
+var hDirty = false, hSaving = false, hT = null;
+function setEditSaveState(txt){ var el = document.getElementById('editSaveState'); if (el) el.textContent = txt; }
+function habitsDirty(fast){
+  hDirty = true; setEditSaveState('...');
+  clearTimeout(hT); hT = setTimeout(flushHabits, fast ? 350 : 900);
+}
+function flushHabits(cb){
+  cb = cb || function(){};
+  if (!hDirty) return cb();
+  if (hSaving) { setTimeout(function(){ flushHabits(cb); }, 250); return; }
+  hDirty = false; hSaving = true;
+  setEditSaveState('saving...');
+  google.script.run.withSuccessHandler(function(res){
+    hSaving = false;
+    state = JSON.parse(res); statsCache = null;   // day + calendar re-pull against the new list
+    if (curView === 'today') render();
+    setEditSaveState('saved ✓');
+    cb();
+  }).withFailureHandler(function(){
+    hSaving = false; hDirty = true; setEditSaveState('offline - will retry');
+    setTimeout(function(){ flushHabits(); }, 2500);
+    cb();
+  }).updateHabits(USER, JSON.stringify(editCache), PIN);
+}
+function loadEditor(){
+  google.script.run.withSuccessHandler(function(res){ editCache = JSON.parse(res); renderEditor(); }).getHabitsFull(USER, PIN);
+}
+function renderEditor(){
+  var html = '';
+  editCache.forEach(function(h, i){
+    html += '<div class="mrow">' +
+      '<div class="r1"><input type="text" value="' + String(h.name).replace(/"/g, '&quot;') + '" oninput="editCache[' + i + '].name=this.value;habitsDirty()"></div>' +
+      '<div class="r2">' +
+        '<select onchange="editCache[' + i + '].group=this.value;habitsDirty(true)">' +
+          GROUPS_ORDER.map(function(g){ return '<option' + (h.group === g ? ' selected' : '') + '>' + g + '</option>'; }).join('') +
+        '</select>' +
+        '<select onchange="editCache[' + i + '].cadence=this.value;habitsDirty(true)">' +
+          '<option value="daily"' + (h.cadence !== 'weekly' ? ' selected' : '') + '>daily</option>' +
+          '<option value="weekly"' + (h.cadence === 'weekly' ? ' selected' : '') + '>weekly</option>' +
+        '</select>' +
+        '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" style="width:auto"' + (h.active !== 'no' ? ' checked' : '') + ' onchange="editCache[' + i + '].active=this.checked?\'yes\':\'no\';habitsDirty(true)">on</label>' +
+        '<button class="del" style="border-color:var(--line);color:var(--ink2);margin-left:auto" onclick="moveHabit(' + i + ',-1)">&#9650;</button>' +
+        '<button class="del" style="border-color:var(--line);color:var(--ink2);margin-left:0" onclick="moveHabit(' + i + ',1)">&#9660;</button>' +
+        '<button class="del" style="margin-left:0" onclick="editCache.splice(' + i + ',1);renderEditor();habitsDirty(true)">delete</button>' +
+      '</div>' +
+      '<div class="r1" style="margin:7px 0 0"><input type="text" placeholder="motivation link (optional)" value="' + String(h.link || '').replace(/"/g, '&quot;') + '" oninput="editCache[' + i + '].link=this.value;habitsDirty()"></div>' +
+      '</div>';
+  });
+  document.getElementById('editList').innerHTML = html;
+}
+function moveHabit(i, dir){
+  var j = i + dir;
+  if (j < 0 || j >= editCache.length) return;
+  var t = editCache[i]; editCache[i] = editCache[j]; editCache[j] = t;
+  renderEditor();
+  habitsDirty(true);   // order is saved exactly as listed - Day view follows it
+}
+function addHabit(){
+  editCache.push({ id: '', group: 'Standards', name: '', cadence: 'daily', active: 'yes', link: '' });
+  renderEditor();
+  habitsDirty(true);
+}
+
+/* ===== group view ===== */
+function renderGroup(){
+  var el = document.getElementById('groupList');
+  if (!el) return;
+  el.innerHTML = '<div class="card sub">loading group...</div>';
+  google.script.run.withSuccessHandler(function(res){
+    var g = JSON.parse(res);
+    var html = '';
+    g.sort(function(a, b){ return (b.week || 0) - (a.week || 0); }).forEach(function(m){
+      var tb = band(m.today), wb = band(m.week);
+      var pills = '';
+      m.last7.forEach(function(d){
+        var c = d.pct === null ? null : band(d.pct);
+        pills += '<div class="dot"><div class="c" style="' + (c ? 'background:' + c[0] + ';color:' + c[1] + ';border-color:transparent' : '') + '">' +
+                 (d.pct === null ? '&middot;' : d.pct) + '</div><div class="w">' + WSHORT[d.dow] + '</div></div>';
+      });
+      var mb = band(m.month), yb = band(m.year);
+      html += '<div class="card" style="margin:10px 16px;cursor:pointer" onclick="openMember(\'' + m.user + '\')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          '<b style="font-size:15px">' + m.name + '</b>' +
+          '<span style="display:flex;gap:6px;align-items:center"><span class="pill" style="font-weight:800">' + m.streak + 'd streak</span>' +
+          '<span class="pill" style="color:var(--accent);border-color:var(--accent)">view &#8250;</span></span>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+          '<div class="stat" style="padding:7px 4px"><div class="v" style="font-size:15px;color:' + (m.today === null ? 'var(--ink2)' : tb[0]) + '">' + (m.today === null ? '-' : m.today + '%') + '</div><div class="l">TODAY</div></div>' +
+          '<div class="stat" style="padding:7px 4px"><div class="v" style="font-size:15px;color:' + (m.week === null ? 'var(--ink2)' : wb[0]) + '">' + (m.week === null ? '-' : m.week + '%') + '</div><div class="l">7-DAY</div></div>' +
+          '<div class="stat" style="padding:7px 4px"><div class="v" style="font-size:15px;color:' + (m.month === null ? 'var(--ink2)' : mb[0]) + '">' + (m.month === null ? '-' : m.month + '%') + '</div><div class="l">MONTH</div></div>' +
+          '<div class="stat" style="padding:7px 4px"><div class="v" style="font-size:15px;color:' + (m.year === null ? 'var(--ink2)' : yb[0]) + '">' + (m.year === null ? '-' : m.year + '%') + '</div><div class="l">YEAR</div></div>' +
+        '</div>' +
+        '<div class="strip" style="padding:0">' + pills + '</div>' +
+      '</div>';
+    });
+    el.innerHTML = html || '<div class="card sub">No members yet - share your join link.</div>';
+  }).withFailureHandler(function(){ el.innerHTML = '<div class="card sub">offline - try again</div>'; })
+    .getGroup(USER, PIN);
+}
+
+/* ===== Life Visualized: every day of a 100-year life, birthday-anchored ===== */
+var BIRTH = new Date(2001, 2, 18);   // default; replaced by each user's own birthday from the server
+function setBirth_(iso){
+  var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) BIRTH = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  var el = document.getElementById('lifeBirth');
+  if (el && document.activeElement !== el) {
+    el.value = ('0' + (BIRTH.getMonth() + 1)).slice(-2) + '/' + ('0' + BIRTH.getDate()).slice(-2) + '/' + BIRTH.getFullYear();
+  }
+}
+function birthChanged_(){
+  var el = document.getElementById('lifeBirth'), st = document.getElementById('lifeBirthState');
+  var v = el.value;
+  var m = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (!m) { st.textContent = 'use MM/DD/YYYY'; return; }
+  var iso = m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2);
+  setBirth_(iso); renderLife();                                    // chart redraws instantly
+  st.textContent = 'saving...';
+  google.script.run.withSuccessHandler(function(res){
+    var r = JSON.parse(res);
+    st.textContent = r.ok ? 'saved \u2713' : r.err;
+  }).withFailureHandler(function(){ st.textContent = 'offline - will keep local until next save'; })
+    .setBirth(USER, PIN, iso);
+}
+function renderLife(){
+  var cv = document.getElementById('lifeCanvas');
+  if (!cv || !cv.parentNode.clientWidth) return;
+  var full = cv.parentNode.clientWidth - 28;
+  var rows = 100, cols = 366, axisL = 30, axisT = 15, axisR = 38;
+  var cssW = full - axisL - axisR;
+  var cw = cssW / cols;
+  var ch = Math.max(cw, 4.4);
+  var cssH = axisT + rows * ch + 4;
+  var dpr = window.devicePixelRatio || 1;
+  cv.style.width = full + 'px'; cv.style.height = cssH + 'px';
+  cv.width = Math.round(full * dpr); cv.height = Math.round(cssH * dpr);
+  var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var gradeBy = {};
+  if (statsCache) statsCache.daily.forEach(function(d){ gradeBy[d.date] = d.pct; });
+  var today = new Date(); today.setHours(12, 0, 0, 0);
+  var msDay = 86400000, tx = -1, ty = -1;
+  for (var y = 0; y < rows; y++) {
+    var rowStart = new Date(BIRTH); rowStart.setFullYear(BIRTH.getFullYear() + y);
+    var rowEnd = new Date(BIRTH); rowEnd.setFullYear(BIRTH.getFullYear() + y + 1);
+    var nDays = Math.round((rowEnd - rowStart) / msDay);
+    for (var d = 0; d < nDays; d++) {
+      var date = new Date(rowStart.getTime() + d * msDay);
+      var x = axisL + d * cw, yy = axisT + y * ch;
+      var color;
+      if (Math.abs(date - today) < msDay / 2) { color = '#ffffff'; tx = x; ty = yy; }
+      else if (date < today) {
+        var k = date.getFullYear() + '-' + ('0' + (date.getMonth() + 1)).slice(-2) + '-' + ('0' + date.getDate()).slice(-2);
+        var p = gradeBy[k];
+        color = (p === undefined) ? '#4a262b' : band(p)[0];   // spent day = dim red; tracked day = its grade
+      } else color = '#18191b';                               // the days still ahead
+      g.fillStyle = color;
+      g.fillRect(x, yy, Math.max(cw - 0.3, 0.5), ch - 0.9);
+    }
+  }
+  if (tx >= 0) {                                              // make today unmissable
+    g.strokeStyle = '#ffffff'; g.lineWidth = 1.2;
+    g.beginPath(); g.arc(tx + cw / 2, ty + ch / 2, Math.max(ch, 4), 0, 7); g.stroke();
+  }
+  g.fillStyle = '#93a098'; g.font = '9px sans-serif';
+  g.textAlign = 'right';
+  for (var a = 0; a <= 90; a += 10) g.fillText(a + 'y', axisL - 4, axisT + a * ch + ch);   // AGE in years
+  g.textAlign = 'left';
+  for (var a2 = 0; a2 <= 100; a2 += 10) {                                                  // calendar YEAR on the right
+    var yr2 = BIRTH.getFullYear() + a2;
+    g.fillText(yr2, axisL + cssW + 5, axisT + Math.min(a2, 99) * ch + ch);
+  }
+  var allN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var allL = [31,28,31,30,31,30,31,31,30,31,30,31];
+  var bm0 = BIRTH.getMonth(), off = 0;                                                     // X anchored on each user's birth month
+  for (var mi = 0; mi < 12; mi++) {
+    var idx2 = (bm0 + mi) % 12;
+    g.fillText(allN[idx2], axisL + off * cw, 10);
+    off += allL[idx2];
+  }
+  var lived = Math.floor((today - BIRTH) / msDay);
+  var end100 = new Date(BIRTH); end100.setFullYear(BIRTH.getFullYear() + 100);
+  var total = Math.round((end100 - BIRTH) / msDay);
+  document.getElementById('lifeLived').textContent = lived.toLocaleString();
+  document.getElementById('lifeLeft').textContent = (total - lived).toLocaleString();
+  var pl = Math.round(10000 * lived / total) / 100;
+  document.getElementById('lifePctL').textContent = pl + '%';
+  document.getElementById('lifePctR').textContent = (Math.round((100 - pl) * 100) / 100) + '%';
+}
+document.addEventListener('visibilitychange', function(){   // day rolls over while app stays open
+  if (document.visibilityState === 'visible') renderLife();
+});
+
+/* ===== member inspector: their list + checkmarks, read-only, no private fields ===== */
+function openMember(u){ memberDay_(u, todayKeyJs_()); }
+function todayKeyJs_(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function memberDay_(u, date){
+  var ov = document.getElementById('memberOv'), bx = document.getElementById('memberBox');
+  ov.style.display = '';
+  bx.innerHTML = '<div class="card sub">loading...</div>';
+  google.script.run.withSuccessHandler(function(res){
+    var m = JSON.parse(res);
+    var groups = {};
+    m.habits.forEach(function(h){ (groups[h.group] = groups[h.group] || []).push(h); });
+    var parts = date.split('-');
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 4px">' +
+      '<div><b style="font-size:17px">' + m.name + '</b><div class="sub">' + WDAYS[d.getDay()] + ' ' + (d.getMonth() + 1) + '/' + d.getDate() + ' &middot; ' + m.pct + '% complete</div></div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="calBtn" onclick="memberShift_(\'' + m.name + '\',\'' + u + '\',\'' + date + '\',-1)">&#8249;</button>' +
+        '<button class="calBtn" onclick="memberShift_(\'' + m.name + '\',\'' + u + '\',\'' + date + '\',1)">&#8250;</button>' +
+        '<button class="calBtn" onclick="document.getElementById(\'memberOv\').style.display=\'none\'">&#10005;</button>' +
+      '</div></div>';
+    GROUPS_ORDER.concat(Object.keys(groups).filter(function(g){ return GROUPS_ORDER.indexOf(g) < 0; })).forEach(function(g){
+      if (!groups[g]) return;
+      var done = groups[g].filter(function(h){ return m.checked[h.id]; }).length;
+      html += '<div class="group"><b>' + g + '</b><span>' + done + '/' + groups[g].length + '</span></div>';
+      groups[g].forEach(function(h){
+        var on = !!m.checked[h.id];
+        html += '<div class="item' + (on ? ' done' : '') + '" style="pointer-events:none">' +
+          '<div class="box">' + (on ? '&#10003;' : '') + '</div><div class="name">' + h.name + '</div>' +
+          (h.cadence === 'weekly' ? '<span class="pill">WEEKLY</span>' : '') + '</div>';
+      });
+    });
+    bx.innerHTML = html;
+  }).withFailureHandler(function(){ bx.innerHTML = '<div class="card sub">could not load - try again</div>'; })
+    .getMemberDay(USER, PIN, u, date);
+}
+function memberShift_(name, u, date, dir){
+  var p = date.split('-');
+  var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  d.setDate(d.getDate() + dir);
+  memberDay_(u, d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2));
+}
+
+/* ===== one-time guide so new members instantly know how to drive ===== */
+function maybeGuide_(){
+  if (state.needGuide) document.getElementById('guideOv').style.display = '';
+}
+function openGuide_(){ document.getElementById('guideOv').style.display = ''; }
+function closeGuide_(){
+  document.getElementById('guideOv').style.display = 'none';
+  if (state.needGuide) {
+    state.needGuide = false;
+    google.script.run.markGuideSeen(USER, PIN);   // remembered server-side: never auto-shows again, any device
+  }
+}
+
+/* ===== auth gates + boot ===== */
+function pinSubmit(){
+  PIN = document.getElementById('pinIn').value;
+  try { localStorage.setItem('ht_pin_' + USER, PIN); } catch (e) {}
+  document.getElementById('pinErr').textContent = 'checking...';
+  google.script.run.withSuccessHandler(function(res){
+    var r = JSON.parse(res);
+    if (r.ok) { location.href = r.url; }   // land on your tokenized link - never asks again
+    else { document.getElementById('pinErr').textContent = 'Wrong PIN - try again.'; document.getElementById('pinIn').value = ''; }
+  }).withFailureHandler(function(){ boot(); })
+    .loginLink(USER, PIN);
+}
+function joinSubmit(){
+  var n = document.getElementById('jName').value, d = document.getElementById('jDisplay').value,
+      p = document.getElementById('jPin').value, em = document.getElementById('jEmail').value,
+      bd = document.getElementById('jBirth').value;
+  var err = document.getElementById('jErr');
+  if (!document.getElementById('jPriv').checked) { err.textContent = 'Please confirm the privacy note.'; return; }
+  err.textContent = 'creating your tracker (about 10 seconds)...';
+  google.script.run.withSuccessHandler(function(res){
+    var r = JSON.parse(res);
+    if (!r.ok) { err.textContent = r.err; return; }
+    try { localStorage.setItem('ht_pin_' + r.user, p); } catch (e) {}
+    err.style.color = 'var(--gA)';
+    err.innerHTML = '<b>Account created.</b> Opening YOUR tracker now - when it loads, ADD THAT PAGE to your home screen. That page is your personal key; this signup page is not.';
+    setTimeout(function(){ location.href = r.url; }, 2200);
+  }).withFailureHandler(function(){ err.style.color = '#e08b8b'; err.textContent = 'Connection problem - try again.'; })
+    .register(n, d, p, em, bd);
+}
+function loginGo(){
+  var err = document.getElementById('lErr');
+  err.textContent = 'opening...';
+  google.script.run.withSuccessHandler(function(res){
+    var r = JSON.parse(res);
+    if (!r.ok) { err.textContent = r.err; return; }
+    location.href = r.url;
+  }).withFailureHandler(function(){ err.textContent = 'Connection problem - try again.'; })
+    .loginLink(document.getElementById('lName').value, document.getElementById('lPin').value);
+}
+function boot(){
+  document.getElementById('pinGate').style.display = 'none';
+  google.script.run.withSuccessHandler(function(res){
+    state = JSON.parse(res); setBirth_(state.birth); render(); applyLayout(); maybeGuide_();
+  }).withFailureHandler(function(e){
+    var msg = String(e && e.message || '');
+    if (msg.indexOf('UNKNOWN_USER') >= 0) { location.href = BASE_URL + '?join=1'; return; }
+    document.getElementById('pinWho').textContent = 'for ' + USER;
+    document.getElementById('pinGate').style.display = '';
+    if (PIN) document.getElementById('pinErr').textContent = 'Wrong PIN - try again.';
+    document.getElementById('pinIn').value = ''; document.getElementById('pinIn').focus();
+  }).getState(USER, selDate, PIN);
+}
+/* Nothing renders until we know who is looking. */
+window.__BOOT = function () { USER = window.USER; boot(); };
+</script>
+
+<script>
+/* ---- PWA runtime: install, offline, push. None of this was possible on Apps Script. ---- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function(){}); });
+}
+
+/* iOS gives no beforeinstallprompt - the Share > Add to Home Screen path is manual,
+   so tell first-time Safari visitors once, then never again. */
+(function(){
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone) return;
+  var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  try { if (localStorage.getItem('ht_a2hs')) return; } catch(e){}
+  window.addEventListener('load', function(){
+    var b = document.createElement('div');
+    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));'
+      + 'z-index:99;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;'
+      + 'font-size:14px;color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.5)';
+    b.innerHTML = (iOS
+      ? 'Install STANDARD: tap <b>Share</b>, then <b>Add to Home Screen</b>. Notifications only work once installed.'
+      : 'Install STANDARD from your browser menu to get daily reminders.')
+      + '<span id="a2hsX" style="float:right;color:var(--ink2);padding-left:14px">Dismiss</span>';
+    document.body.appendChild(b);
+    document.getElementById('a2hsX').onclick = function(){
+      try { localStorage.setItem('ht_a2hs','1'); } catch(e){}
+      b.remove();
+    };
+  });
+})();
+
+/* iOS can evict a backgrounded web app from memory; reopening is a cold load, not a resume.
+   Remember where he was so it comes back to the same place. */
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'hidden') {
+    try { sessionStorage.setItem('ht_view', JSON.stringify({ v: curView, d: selDate })); } catch(e){}
+  }
+});
+</script>
+</body>
+</html>
