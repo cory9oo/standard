@@ -1,31 +1,52 @@
 /* STANDARD - service worker.
-   Two jobs: keep the shell instantly available offline, and receive push.
-   Shell = cache-first (instant paint). API = never cached: truth lives on the
-   server, and a stale checkbox is worse than a spinner. */
-const SHELL = 'standard-shell-v1';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+
+   NETWORK-FIRST, deliberately. The first version of this file was cache-first,
+   which is correct for a finished app and wrong for one under active development:
+   it pinned every installed phone to the first build forever. Anyone who had
+   installed it would never see another fix.
+
+   Now: always try the network, fall back to cache only when offline. The app
+   stays usable on a plane and still updates the moment there is signal. */
+const CACHE = 'standard-v3';
+const SHELL = ['./', './index.html', './sb-api.js', './auth.js', './manifest.webmanifest',
+               './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(SHELL).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
-});
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys()
-    .then(ks => Promise.all(ks.filter(k => k !== SHELL).map(k => caches.delete(k))))
-    .then(() => self.clients.claim()));
-});
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  if (e.request.method !== 'GET') return;              // never cache writes
-  if (url.hostname.endsWith('supabase.co')) return;     // never cache data
-  if (url.origin !== self.location.origin) return;     // let the CDN handle Chart.js
-  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-    if (res.ok) { const copy = res.clone(); caches.open(SHELL).then(c => c.put(e.request, copy)); }
-    return res;
-  }).catch(() => caches.match('./index.html'))));
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())
+  );
 });
 
-/* Push - the whole reason this file has to exist on an origin we control.
-   Apps Script cannot register a service worker, so it can never send a reminder. */
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys()
+      .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET') return;
+  if (url.hostname.endsWith('supabase.co')) return;   // never cache data
+  if (url.origin !== self.location.origin) return;    // let the CDN handle its own
+
+  e.respondWith(
+    fetch(e.request)
+      .then(res => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request).then(hit => hit || caches.match('./index.html')))
+  );
+});
+
+/* Lets the page tell a waiting worker to take over immediately. */
+self.addEventListener('message', e => { if (e.data === 'skipWaiting') self.skipWaiting(); });
+
 self.addEventListener('push', e => {
   let d = { title: 'STANDARD', body: 'Log your day.' };
   try { if (e.data) d = Object.assign(d, e.data.json()); } catch (_) {}
@@ -34,6 +55,7 @@ self.addEventListener('push', e => {
     tag: d.tag || 'standard-daily', renotify: true, data: { url: d.url || './' }
   }));
 });
+
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const target = (e.notification.data && e.notification.data.url) || './';
