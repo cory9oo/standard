@@ -262,6 +262,15 @@
     };
   });
 
+  /* ?firstrun=1 opens the flow in preview - it walks and edits exactly like the
+     real thing but saves nothing. Lets the first run be reviewed, and shown to
+     someone before they sign up, without inventing a throwaway account. */
+  window.addEventListener('load', function () {
+    if (/[?&]firstrun=/.test(location.search)) {
+      setTimeout(function () { window.openOnboarding_({ preview: true }); }, 400);
+    }
+  });
+
   /* Android and desktop Chrome hand us a real install prompt - keep it so the
      install step can be one tap instead of a menu instruction. */
   window.addEventListener('beforeinstallprompt', function (e) {
