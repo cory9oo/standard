@@ -21,7 +21,9 @@ var SKINS = ['statement','carbon','terminal','blueprint'];
 
 var S = {
   me:null, priv0:null, habits:[], days:[], byDate:{},
-  date:null, priv:null, sort:'order', find:'', removed:[], circle:null
+  date:null, priv:null, privAll:{},
+  sort:'order', grp:'all', find:'', removed:[], circle:null,
+  calYM:null, calMode:'pct'
 };
 
 /* ============================ helpers ============================ */
@@ -137,16 +139,40 @@ async function load(){
   S.byDate = {}; S.days.forEach(function(r){ S.byDate[r.date]=r; });
   if(!S.date) S.date = today();
   if(!S.byDate[S.date]) S.byDate[S.date]={ date:S.date, checked:{}, pct:0 };
-  await loadPriv();
+  if(!S.calYM){ var t=dnum(today()); S.calYM=[t.getFullYear(),t.getMonth()]; }
+
+  /* the whole private record — rating and journal are inputs, so they get outputs */
+  var pv = await sb.from('day_private').select('date,rating,why,tasks,prayer').eq('user_id',uid);
+  S.privAll = {}; (pv.data||[]).forEach(function(r){ S.privAll[r.date]=r; });
+  S.priv = S.privAll[S.date] || null;
   return true;
 }
-async function loadPriv(){
-  var r = await sb.from('day_private').select('rating,why,tasks,prayer')
-    .eq('user_id',S.me.id).eq('date',S.date).maybeSingle();
-  S.priv = r.data || null;
-}
+function loadPriv(){ S.priv = S.privAll[S.date] || null; return Promise.resolve(); }
 var saveT=null;
 function queueSave(){ clearTimeout(saveT); saveT=setTimeout(saveDay,450); }
+
+var pvT=null;
+function queuePriv(){ clearTimeout(pvT); pvT=setTimeout(savePriv,700); }
+async function savePriv(){
+  var p = S.priv || (S.priv={});
+  p.date=S.date; p.user_id=S.me.id;
+  S.privAll[S.date]=p;
+  var res = await sb.from('day_private').upsert({
+    user_id:S.me.id, date:S.date,
+    rating:(p.rating==null?null:p.rating), why:p.why||'', tasks:p.tasks||'', prayer:p.prayer||''
+  },{ onConflict:'user_id,date' });
+  if(res.error) toast('note not saved'); else toast('saved');
+  var n=0; ['why','tasks','prayer'].forEach(function(k){ if(p[k]) n++; });
+  el('jrnC').textContent = n? n+' of 3 written · autosaves' : 'saves as you type';
+  paintRating(); paintRChart(); paintRScat(); paintRByMo(); paintJournal(); paintCal();
+}
+function ratingOf(k){ var p=S.privAll[k]; var v=p&&p.rating; return (v==null||v==='')?null:+v; }
+function rollRate(n,upto){
+  var end=upto||today(), a=[];
+  for(var i=n-1;i>=0;i--){ var v=ratingOf(shift(end,-i)); if(v!=null) a.push(v); }
+  if(!a.length) return null;
+  return Math.round(a.reduce(function(x,y){return x+y;},0)/a.length*10)/10;
+}
 async function saveDay(){
   var r=S.byDate[S.date], ids=daily().map(function(h){return h.id;});
   r.pct = pctOf(r.checked||{}, ids);
@@ -178,6 +204,7 @@ function paintMast(){
     tp('90-day', (r90==null?'—':r90+'%')) +
     tp('Streak', st+'<s>d ≥80%</s>') +
     tp('Weekly', wkDone+'<s>of '+wk.length+'</s>') +
+    tp('Rating', (function(){ var r=rollRate(7); return (r==null?'—':r)+'<s>7d avg</s>'; })()) +
     tp('Logged', dates().length+'<s>days</s>');
 }
 function tp(k,v){ return '<div class="tp"><div class="k">'+k+'</div><div class="v num">'+v+'</div></div>'; }
@@ -223,6 +250,8 @@ function paintLog(){
   var list=S.habits.slice();
 
   if(q) list=list.filter(function(h){ return (h.name+' '+(h.group_name||'')).toLowerCase().indexOf(q)>=0; });
+  if(S.grp==='daily')  list=list.filter(function(h){ return h.cadence!=='weekly'; });
+  if(S.grp==='weekly') list=list.filter(function(h){ return h.cadence==='weekly'; });
 
   if(S.sort==='order')  list.sort(function(a,b){ return (a.sort_order||0)-(b.sort_order||0); });
   if(S.sort==='undone') list.sort(function(a,b){
@@ -232,6 +261,7 @@ function paintLog(){
     var aa=adherence30(a.id), ba=adherence30(b.id);
     return (aa==null?101:aa)-(ba==null?101:ba); });
   if(S.sort==='heavy')  list.sort(function(a,b){ return (b.minutes||0)-(a.minutes||0); });
+  if(S.sort==='az')     list.sort(function(a,b){ return label(a.name).toLowerCase()<label(b.name).toLowerCase()?-1:1; });
 
   el('log').className = 'log'+(list.length>16?' split':'');
   el('log').innerHTML = list.map(function(h){
@@ -250,7 +280,24 @@ function paintLog(){
   var ids=daily().map(function(x){return x.id;});
   var done=ids.filter(function(i){return ck[i];}).length;
   el('logC').textContent = done+' / '+ids.length+' · '+fmt(remaining(S.date))+' left';
-  el('dayNote').innerHTML = S.priv&&S.priv.why ? '<b>Note.</b> '+esc(S.priv.why) : '';
+}
+
+/* ---- input 2 and 3: the rating strip and the journal ---- */
+function paintRating(){
+  var cur = S.priv && S.priv.rating!=null ? +S.priv.rating : null, h='';
+  for(var i=1;i<=10;i++) h+='<button data-r="'+i+'" class="'+(cur===i?'on':'')+'">'+i+'</button>';
+  h+='<button data-r="0" class="clr" title="clear">×</button>';
+  el('rate').innerHTML=h;
+  var r7=rollRate(7), r30=rollRate(30);
+  el('rateC').textContent = (cur==null?'not rated':'rated '+cur)+
+    (r7==null?'':' · 7d '+r7)+(r30==null?'':' · 30d '+r30);
+}
+function paintJournalInputs(){
+  el('iWhy').value    = (S.priv&&S.priv.why)||'';
+  el('iTasks').value  = (S.priv&&S.priv.tasks)||'';
+  el('iPrayer').value = (S.priv&&S.priv.prayer)||'';
+  var n=0; ['why','tasks','prayer'].forEach(function(k){ if(S.priv&&S.priv[k]) n++; });
+  el('jrnC').textContent = n? n+' of 3 written · autosaves' : 'saves as you type';
 }
 
 function toggle(hid){
@@ -279,9 +326,182 @@ function fitSvg(id,h){
 /* fills use the density ramp; text uses ink / bad / good only */
 function gtxt(p){ return p==null?'var(--ink3)':(p<50?'var(--bad)':(p>=90?'var(--good)':'var(--ink)')); }
 function paintRight(){
-  paintSankey(); paintHeat(); paintChart(); paintMomo(); paintDow(); paintGdist();
-  paintPerHabit(); paintScatter(); paintStreaks(); paintGroups(); paintTLedger(); paintLife();
+  paintSankey(); paintHeat(); paintCal(); paintChart(); paintMomo(); paintDow();
+  paintByMo(); paintByYear(); paintGdist();
+  paintRChart(); paintRScat(); paintRByMo(); paintJournal();
+  paintPerHabit(); paintScatter(); paintStreaks(); paintGroups(); paintNextMove();
+  paintTLedger(); paintLife();
 }
+
+/* ---- month calendar, completion or rating ---- */
+function paintCal(){
+  var y=S.calYM[0], m=S.calYM[1];
+  var first=new Date(y,m,1), start=new Date(first);
+  start.setDate(1-((first.getDay()+6)%7));                 /* Monday-led */
+  var h=['Mo','Tu','We','Th','Fr','Sa','Su'].map(function(d){return '<div class="hd">'+d+'</div>';}).join('');
+  for(var i=0;i<42;i++){
+    var d=new Date(start); d.setDate(start.getDate()+i);
+    var k=dk(d), out=(d.getMonth()!==m), fut=(k>today());
+    var v,f,txt;
+    if(S.calMode==='rate'){ v=ratingOf(k); f=(v==null?'var(--sunk)':dens(v*10)); txt=(v==null?'':v); }
+    else { var r=S.byDate[k]; v=(r&&r.pct!=null&&!fut)?r.pct:null; f=dens(v); txt=(v==null?'':v); }
+    h+='<button class="d'+(out?' out':'')+(k===today()?' tdy':'')+'" data-cd="'+k+'" style="background:'+f+'">'+
+       '<b>'+d.getDate()+'</b>'+(txt===''?'':'<s>'+txt+'</s>')+'</button>';
+  }
+  el('cal').innerHTML=h;
+  el('calNav').innerHTML='<button class="mv" data-cm="-1">‹</button> '+MO[m]+' '+y+' <button class="mv" data-cm="1">›</button>';
+}
+function paintHeatLegend(){
+  var h='<span>less</span>';
+  [0,20,40,60,80,100].forEach(function(p){ h+='<i style="background:'+dens(p)+'"></i>'; });
+  h+='<span>more</span><span style="margin-left:auto">grey = no entry</span>';
+  el('heatLeg').innerHTML=h;
+}
+
+/* ---- rating: the second input finally gets its outputs ---- */
+function paintRChart(){
+  var N=90, H=118, W=fitSvg('rChart',H), pts=[], any=false;
+  for(var i=N-1;i>=0;i--){ var v=ratingOf(shift(today(),-i)); pts.push(v); if(v!=null) any=true; }
+  if(!any){ el('rChart').innerHTML='<text x="6" y="20">No ratings yet — rate a day on the left.</text>';
+    el('rTrendC').textContent='90 days'; return; }
+  var px=function(i){ return 24+i*(W-32)/(N-1); }, py=function(v){ return H-16-(v/10)*(H-28); };
+  var s='';
+  [0,5,10].forEach(function(v){
+    s+='<line class="ax" x1="22" y1="'+py(v)+'" x2="'+(W-4)+'" y2="'+py(v)+'"/>'+
+       '<text x="18" y="'+(py(v)+3)+'" text-anchor="end">'+v+'</text>'; });
+  pts.forEach(function(v,i){ if(v==null) return;
+    s+='<rect x="'+(px(i)-2).toFixed(1)+'" y="'+py(v).toFixed(1)+'" width="4" height="'+(py(0)-py(v)).toFixed(1)+
+       '" fill="'+dens(v*10)+'"><title>'+shift(today(),-(N-1-i))+' · '+v+'/10</title></rect>'; });
+  var m30=rollRate(30);
+  if(m30!=null) s+='<line x1="22" y1="'+py(m30)+'" x2="'+(W-4)+'" y2="'+py(m30)+
+    '" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3"/>';
+  el('rChart').innerHTML=s;
+  el('rTrendC').textContent='90 days · 30d avg '+(m30==null?'—':m30);
+}
+function pearson(a,b){
+  var n=a.length; if(n<3) return null;
+  var ma=a.reduce(function(x,y){return x+y;},0)/n, mb=b.reduce(function(x,y){return x+y;},0)/n;
+  var sn=0,da=0,db=0;
+  for(var i=0;i<n;i++){ var x=a[i]-ma, y=b[i]-mb; sn+=x*y; da+=x*x; db+=y*y; }
+  if(!da||!db) return null;
+  return sn/Math.sqrt(da*db);
+}
+function paintRScat(){
+  var H=136, W=fitSvg('rScat',H), P=[], R=[];
+  dates().forEach(function(k){
+    var r=S.byDate[k], v=ratingOf(k);
+    if(r&&r.pct!=null&&v!=null){ P.push(r.pct); R.push(v); }
+  });
+  if(P.length<3){
+    el('rScat').innerHTML='<text x="6" y="20">Rate a few more days and this fills in.</text>';
+    el('rScatN').innerHTML='Once there are ratings on at least three logged days, this answers one question: <b>does hitting the standard actually make the day feel better?</b>';
+    return;
+  }
+  var px=function(p){ return 30+(p/100)*(W-44); }, py=function(v){ return H-20-(v/10)*(H-36); };
+  var s='';
+  [0,5,10].forEach(function(v){ s+='<line class="ax" x1="26" y1="'+py(v)+'" x2="'+(W-6)+'" y2="'+py(v)+'"/>'+
+    '<text x="22" y="'+(py(v)+3)+'" text-anchor="end">'+v+'</text>'; });
+  for(var i=0;i<P.length;i++)
+    s+='<circle cx="'+px(P[i]).toFixed(1)+'" cy="'+py(R[i]).toFixed(1)+'" r="4" fill="'+dens(P[i])+
+       '" opacity=".8"><title>'+P[i]+'% · rated '+R[i]+'</title></circle>';
+  var r=pearson(P,R);
+  if(r!=null){
+    var ma=P.reduce(function(x,y){return x+y;},0)/P.length, mb=R.reduce(function(x,y){return x+y;},0)/R.length;
+    var num=0,den=0; for(var j=0;j<P.length;j++){ num+=(P[j]-ma)*(R[j]-mb); den+=(P[j]-ma)*(P[j]-ma); }
+    if(den){ var sl=num/den, ic=mb-sl*ma;
+      s+='<line x1="'+px(0)+'" y1="'+py(clamp(ic,0,10))+'" x2="'+px(100)+'" y2="'+py(clamp(sl*100+ic,0,10))+
+         '" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/>'; }
+  }
+  s+='<text x="'+(W-6)+'" y="'+(H-4)+'" text-anchor="end">completion % →</text>';
+  el('rScat').innerHTML=s;
+  var strength = r==null?'':(Math.abs(r)>=0.6?'strong':Math.abs(r)>=0.35?'real but moderate':'weak');
+  el('rScatN').innerHTML = r==null ? '' :
+    'Across <b>'+P.length+'</b> rated days the correlation is <b>r = '+r.toFixed(2)+'</b> — '+strength+
+    (r>=0.35 ? '. Hitting the standard does make the day feel better; the routine is earning its cost.'
+     : r<=-0.35 ? '. Higher completion goes with <b>worse</b> days. The list is buying compliance at the price of the day — worth looking at what you are grinding through.'
+     : '. Completion and how the day felt are close to independent. Either the list is not touching what actually makes a day good, or something outside it is driving the mood.');
+}
+function monthly(fn){
+  var sum=new Array(12).fill(0), n=new Array(12).fill(0);
+  dates().forEach(function(k){ var v=fn(k); if(v==null) return;
+    var m=dnum(k).getMonth(); sum[m]+=v; n[m]++; });
+  return sum.map(function(x,i){ return n[i]?Math.round(x/n[i]*10)/10:null; });
+}
+function colChart(id,vals,labels,maxv,fmtv,colf){
+  var mx=maxv||Math.max.apply(null,vals.map(function(x){return x||0;}))||1;
+  el(id).innerHTML = vals.map(function(v,i){
+    var h=v==null?1:Math.max(3,Math.round(v/mx*52));
+    return '<div class="c"><b'+(v==null?' style="color:var(--ink3)"':'')+'>'+(v==null?'·':(fmtv?fmtv(v):v))+'</b>'+
+      '<i style="height:'+h+'px;background:'+(v==null?'var(--sunk)':colf(v))+(v==null?';opacity:.5':'')+'"></i>'+
+      '<u>'+labels[i]+'</u></div>';
+  }).join('');
+}
+function paintByMo(){
+  var v=monthly(function(k){ var r=S.byDate[k]; return (r&&r.pct!=null)?r.pct:null; });
+  colChart('byMo', v.map(function(x){return x==null?null:Math.round(x);}),
+    MO.map(function(m){return m[0];}), 100, null, dens);
+  var got=v.filter(function(x){return x!=null;}).length;
+  el('byMoC').textContent='completion · '+got+' of 12 months';
+}
+function paintRByMo(){
+  var v=monthly(ratingOf);
+  colChart('rByMo', v, MO.map(function(m){return m[0];}), 10,
+    function(x){ return x.toFixed(1); }, function(x){ return dens(x*10); });
+}
+function paintByYear(){
+  var y={}, o=[];
+  dates().forEach(function(k){ var r=S.byDate[k]; if(!r||r.pct==null) return;
+    var yy=k.slice(0,4); if(!y[yy]){ y[yy]={s:0,n:0,rs:0,rn:0}; o.push(yy); }
+    y[yy].s+=r.pct; y[yy].n++;
+    var v=ratingOf(k); if(v!=null){ y[yy].rs+=v; y[yy].rn++; }
+  });
+  if(!o.length){ el('byYear').innerHTML='<div class="empty">Nothing logged yet.</div>'; return; }
+  el('byYear').innerHTML='<table class="kv">'+o.sort().reverse().map(function(yy){
+    var a=y[yy], p=Math.round(a.s/a.n), r=a.rn?Math.round(a.rs/a.rn*10)/10:null;
+    return '<tr><td class="k">'+yy+' <span style="color:var(--ink3)">'+a.n+' days</span></td>'+
+      '<td class="v w" style="white-space:nowrap"><b style="color:'+gtxt(p)+'">'+p+'%</b>'+
+      '<span style="color:var(--ink3)"> · '+(r==null?'—':r+'/10')+'</span></td></tr>';
+  }).join('')+'</table>';
+}
+function paintJournal(){
+  var ks=Object.keys(S.privAll).filter(function(k){
+    var p=S.privAll[k]; return p && (p.why||p.tasks||p.prayer);
+  }).sort().reverse().slice(0,14);
+  if(!ks.length){ el('jArc').innerHTML='<div class="empty">Nothing written yet. The journal on the left lands here.</div>';
+    el('jArcC').textContent=''; return; }
+  el('jArc').innerHTML = ks.map(function(k){
+    var p=S.privAll[k], r=S.byDate[k], d=dnum(k);
+    var body='';
+    if(p.why)    body+='<p class="q">'+esc(p.why)+'</p>';
+    if(p.tasks)  body+='<p>'+esc(p.tasks)+'</p>';
+    if(p.prayer) body+='<p class="q">'+esc(p.prayer)+'</p>';
+    return '<button class="jr" data-jd="'+k+'" style="display:block;width:100%">'+
+      '<span class="h"><b>'+WD[d.getDay()]+' '+MO[d.getMonth()]+' '+d.getDate()+'</b>'+
+      (p.rating!=null?'<s style="color:'+gtxt(p.rating*10)+'">'+p.rating+'/10</s>':'')+
+      '<span>'+(r&&r.pct!=null?r.pct+'%':'')+'</span></span>'+body+'</button>';
+  }).join('');
+  el('jArcC').textContent = ks.length+' entr'+(ks.length===1?'y':'ies');
+}
+function paintNextMove(){
+  var a=stats().filter(function(s){ return s.pct!=null && s.h.cadence!=='weekly'; });
+  if(!a.length){ el('nextMove').innerHTML='<div class="empty">Log a few days first.</div>'; return; }
+  a.forEach(function(s){ s.lev=(100-s.pct)/((s.mins||0)+10); });
+  a.sort(function(x,y){ return y.lev-x.lev; });
+  var b=a[0], n=daily().length;
+  var gain=Math.round(100/n);
+  var tight = b.pct>=70;
+  el('nextMove').innerHTML='<div class="nm"><span class="big">'+esc(label(b.h.name))+'</span>'+
+    'Held <b>'+b.pct+'%</b> over the last '+b.of+' logged days at a cost of '+
+    (b.mins?('<b>'+b.mins+' minutes</b>'):'<b>no time at all</b>')+
+    '. It is the cheapest ground left on the board — about <b>'+gain+
+    ' points</b> of score per day, for '+(b.mins?b.mins+' minutes':'nothing')+'.'+
+    (tight?' Nothing cheap is badly broken right now, so the next real gain has to come from something that costs time.':'')+
+    '<div style="padding-top:8px;color:var(--ink2)">Runners-up: '+
+      a.slice(1,4).map(function(s){ return esc(label(s.h.name))+' ('+s.pct+'%)'; }).join(' · ')+
+    '</div></div>';
+}
+
+
 
 /* ---- where the day goes: a true two-stage flow ---- */
 function paintSankey(){
@@ -366,6 +586,7 @@ function paintHeat(){
   }
   el('mrow').innerHTML=mh;
   el('heatC').textContent=all.length+' days logged · '+(rolling(365)||0)+'% mean';
+  paintHeatLegend();
 }
 
 /* ---- trend ---- */
@@ -632,6 +853,7 @@ function openSettings(){
   }
   var body=
     '<div class="sh"><h2>The standards</h2><span class="ln"></span><span class="c">'+rows.length+' · edit anything</span></div>'+
+    '<div class="bud" id="bud"></div>'+
     '<div class="tools" style="padding:0 0 8px">'+
       '<button class="btn" id="edAdd">+ Add</button>'+
       '<button class="btn" id="edStrip" title="Remove the 5:00 - 5:20 style prefixes">Strip clock times</button>'+
@@ -668,6 +890,9 @@ function openSettings(){
 
   openOv('Settings',body,function(){
     var list=el('edList');
+    paintBudget();
+    list.addEventListener('input',paintBudget);
+    list.addEventListener('change',paintBudget);
     list.addEventListener('click',function(e){
       var rm=e.target.closest('[data-rm]'), up=e.target.closest('[data-up]');
       if(rm){ var r=rm.closest('.ed'); r.classList.toggle('gone'); }
@@ -699,6 +924,34 @@ function openSettings(){
     });
   });
 }
+/* the list is a time budget; show the bill while it is being written */
+function paintBudget(){
+  var rows=Array.prototype.slice.call(document.querySelectorAll('#edList .ed'));
+  var dMin=0,dN=0,wMin=0,wN=0,free=0;
+  rows.forEach(function(r){
+    if(r.classList.contains('gone')) return;
+    if(!r.querySelector('.en').value.trim()) return;
+    var m=+r.querySelector('.em').value||0, wk=r.querySelector('.ec').value==='weekly';
+    if(wk){ wN++; wMin+=m; } else { dN++; dMin+=m; }
+    if(!m) free++;
+  });
+  var WAKE=1440-480;                                  /* a day, less eight hours of sleep */
+  var pct=Math.min(100,Math.round(dMin/WAKE*100));
+  var level = dMin>420 ? 'over' : dMin>240 ? 'watch' : 'ok';
+  var col = level==='over'?'var(--bad)':level==='watch'?'var(--g3)':'var(--good)';
+  var verdict = level==='over'
+    ? 'More routine than a working day has room for. A list this size gets scored by the clock, not by you.'
+    : level==='watch' ? 'Getting heavy. Every minute here is a minute the day has to find somewhere else.'
+    : 'This fits inside a real day.';
+  el('bud').innerHTML =
+    '<div class="lab">Daily time budget</div>'+
+    '<div class="v" style="color:'+col+'">'+fmt(dMin)+' <span style="font-size:11px;color:var(--ink3)">of '+fmt(WAKE)+' waking</span></div>'+
+    '<div class="t"><i style="width:'+pct+'%;background:'+col+'"></i>'+
+      '<u style="left:'+Math.round(240/WAKE*100)+'%"></u><u style="left:'+Math.round(420/WAKE*100)+'%"></u></div>'+
+    '<div class="k">'+dN+' daily'+(wN?' · '+wN+' weekly ('+fmt(wMin)+'/wk)':'')+
+      (free?' · '+free+' cost no time':'')+'. '+verdict+'</div>';
+}
+
 async function saveStandards(){
   var rows=Array.prototype.slice.call(document.querySelectorAll('#edList .ed'));
   var order=0, ops=[];
@@ -730,21 +983,26 @@ async function saveProfile(){
   toast('profile saved'); paintLife();
 }
 
-/* ---- note ---- */
-function openNote(){
-  var p=S.priv||{};
-  openOv('Note · '+S.date,
-    '<label class="fld"><span class="lab">What happened</span><textarea id="nWhy" rows="5">'+esc(p.why||'')+'</textarea></label>'+
-    '<label class="fld"><span class="lab">Rating 1–10</span><input id="nRate" type="number" min="1" max="10" value="'+esc(p.rating||'')+'"></label>'+
-    '<div class="tools"><button class="btn pri blk" id="nSave">Save note</button></div>',
-    function(){
-      el('nSave').onclick=async function(){
-        var rec={ user_id:S.me.id, date:S.date, why:el('nWhy').value, rating:+el('nRate').value||null };
-        await sb.from('day_private').upsert(rec,{onConflict:'user_id,date'});
-        S.priv=rec; toast('noted'); closeOv(); paintLog();
-      };
-    });
+/* ---- the guide: what every number on the sheet means ---- */
+function openGuide(){
+  openOv('What everything means',
+  '<div class="band">The three inputs</div>'+
+  gd('1 · Completion','Ticking a standard. Your day percentage is simply how many of the daily standards you took, out of how many are active. Weekly standards are credited to the whole Monday–Sunday week, so taking one on Tuesday keeps the week green.')+
+  gd('2 · Rating','Your own 1–10 on the day, before you look at the score. It is the only number here you cannot game, because nothing computes it.')+
+  gd('3 · Journal','Why it was that number, what you actually got done, and the prayer journal. Three free-text fields, saved per day.')+
+  '<div class="band">Everything else is an output</div>'+
+  gd('Where the day goes','The committed block is the sum of the minutes you priced your daily standards at. The top bar splits it by group; the bottom bar splits the same minutes into what you did and what you missed. The ribbons show which group the missed time came from.')+
+  gd('Cost against adherence','Every priced standard is one dot: minutes on the horizontal, how often you actually take it on the vertical. It is testing one excuse — <b>am I missing things because they are expensive?</b> If the cloud slopes down to the right, price is the problem and the fix is to shorten or cut. If it is flat, price is not the problem, and cutting minutes will not help.')+
+  gd('Rating against completion','The same test on the other side. Does hitting the standard make the day feel better? A positive correlation means the routine is earning its cost. A flat one means the list is not touching what actually makes your day good.')+
+  gd('Momentum','This 7 days against the 7 before it. The projection just carries the same change forward one more week — it is arithmetic, not a forecast.')+
+  gd('Streaks','Current run of consecutive days taken, then the longest run in the last 90. Today does not break a streak until the day closes.')+
+  gd('Next move','Room to gain divided by what it costs. The standard with the most missing days at the lowest price — the cheapest points on the board.')+
+  gd('Time ledger','Committed minutes per day multiplied by days logged is what the routine billed you. Spent is what you actually took. The difference is the unspent balance — not wasted time, just time the list asked for and did not get.')+
+  gd('Grades','A+ 97, A 90, B 80, C 70, D 60, F below. The colour ramp is continuous, not banded, so a 45 and a 62 do not look the same.'),
+  null);
 }
+function gd(t,b){ return '<div style="padding:12px 0;border-bottom:1px solid var(--rule)">'+
+  '<div class="lab" style="padding-bottom:5px">'+t+'</div><div class="note">'+b+'</div></div>'; }
 
 /* ---- circle manage ---- */
 function openCircle(){
@@ -829,7 +1087,19 @@ function authScreen(){
 }
 
 /* ============================ paint all ============================ */
-function paintAll(){ paintMast(); paintRail(); paintLog(); paintRight(); paintCircle(); }
+function paintAll(){
+  paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs();
+  paintRight(); paintCircle();
+}
+
+function goDay(k){
+  S.date=k;
+  if(!S.byDate[k]) S.byDate[k]={date:k,checked:{},pct:0};
+  S.priv=S.privAll[k]||null;
+  var d=dnum(k); S.calYM=[d.getFullYear(),d.getMonth()];
+  paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs(); paintSankey(); paintCal();
+  var t=el('jIn'); if(t && window.innerWidth<1080) window.scrollTo({top:Math.max(0,t.offsetTop-70),behavior:'smooth'});
+}
 
 /* ============================ events ============================ */
 function wire(){
@@ -837,15 +1107,51 @@ function wire(){
     var b=e.target.closest('[data-skin]'); if(b) skin(b.getAttribute('data-skin'));
   });
   el('bSet').onclick=openSettings;
-  el('bNote').onclick=openNote;
+  el('bGuide').onclick=openGuide;
   el('bCircle').onclick=openCircle;
+
+  /* input 2 — rating */
+  el('rate').addEventListener('click',function(e){
+    var b=e.target.closest('[data-r]'); if(!b) return;
+    var v=+b.getAttribute('data-r');
+    S.priv=S.priv||{};
+    S.priv.rating = (v===0 || S.priv.rating===v) ? null : v;
+    paintRating(); queuePriv();
+  });
+  /* input 3 — journal */
+  [['iWhy','why'],['iTasks','tasks'],['iPrayer','prayer']].forEach(function(p){
+    var n=el(p[0]);
+    n.addEventListener('input',function(){
+      S.priv=S.priv||{}; S.priv[p[1]]=n.value; queuePriv();
+      el('jrnC').textContent='saving…';
+    });
+  });
+
+  /* month calendar */
+  el('calNav').addEventListener('click',function(e){
+    var b=e.target.closest('[data-cm]'); if(!b) return;
+    var d=+b.getAttribute('data-cm'), m=S.calYM[1]+d, y=S.calYM[0];
+    if(m<0){ m=11; y--; } if(m>11){ m=0; y++; }
+    S.calYM=[y,m]; paintCal();
+  });
+  el('calMode').addEventListener('click',function(e){
+    var b=e.target.closest('[data-m]'); if(!b) return;
+    S.calMode=b.getAttribute('data-m');
+    Array.prototype.forEach.call(el('calMode').children,function(c){ c.classList.toggle('on',c===b); });
+    paintCal();
+  });
+  el('cal').addEventListener('click',function(e){
+    var b=e.target.closest('[data-cd]'); if(!b) return;
+    var k=b.getAttribute('data-cd'); if(k>today()) return;
+    goDay(k);
+  });
+  el('jArc').addEventListener('click',function(e){
+    var b=e.target.closest('[data-jd]'); if(b) goDay(b.getAttribute('data-jd'));
+  });
   el('ov').addEventListener('click',function(e){ if(e.target.closest('[data-x]')) closeOv(); });
 
-  el('rail').addEventListener('click',async function(e){
-    var b=e.target.closest('[data-d]'); if(!b) return;
-    S.date=b.getAttribute('data-d');
-    if(!S.byDate[S.date]) S.byDate[S.date]={date:S.date,checked:{},pct:0};
-    await loadPriv(); paintMast(); paintRail(); paintLog(); paintSankey();
+  el('rail').addEventListener('click',function(e){
+    var b=e.target.closest('[data-d]'); if(b) goDay(b.getAttribute('data-d'));
   });
 
   el('log').addEventListener('click',function(e){
@@ -857,6 +1163,12 @@ function wire(){
     toggle(b.getAttribute('data-h'));
   });
 
+  el('grpSeg').addEventListener('click',function(e){
+    var b=e.target.closest('[data-g]'); if(!b) return;
+    S.grp=b.getAttribute('data-g');
+    Array.prototype.forEach.call(el('grpSeg').children,function(c){ c.classList.toggle('on',c===b); });
+    paintLog();
+  });
   el('sortSeg').addEventListener('click',function(e){
     var b=e.target.closest('[data-s]'); if(!b) return;
     S.sort=b.getAttribute('data-s');
@@ -893,6 +1205,8 @@ function wire(){
     if(e.key===']'){ var n=shift(S.date,1); if(n<=today()) el('rail').querySelector('[data-d="'+n+'"]')?.click(); return; }
     if(e.key==='t'){ el('rail').querySelector('[data-d="'+today()+'"]')?.click(); return; }
     if(e.key==='s'){ openSettings(); return; }
+    if(e.key==='?'||e.key==='g'){ openGuide(); return; }
+    if(e.key==='j'){ el('iTasks').focus(); return; }
     if(e.key>='1'&&e.key<='9'){
       var rows=el('log').querySelectorAll('[data-h]'), i=+e.key-1;
       if(rows[i]) rows[i].click();
@@ -901,12 +1215,13 @@ function wire(){
 
   var rT=null;
   window.addEventListener('resize',function(){
-    clearTimeout(rT); rT=setTimeout(function(){ paintSankey(); paintChart(); paintScatter(); paintLog(); },160);
+    clearTimeout(rT); rT=setTimeout(function(){
+      paintSankey(); paintChart(); paintScatter(); paintRChart(); paintRScat(); paintLog(); },160);
   });
 
   window.addEventListener('scroll',function(){
     if(window.innerWidth>=1080) return;
-    var ss=['jLog','jRead','jStand','jCircle'], cur=ss[0];
+    var ss=['jIn','jDay','jRec','jRate','jStand','jCircle'], cur=ss[0];
     ss.forEach(function(id){ var n=el(id); if(n && n.offsetTop-100<=window.scrollY) cur=id; });
     Array.prototype.forEach.call(el('jump').children,function(c){
       c.classList.toggle('on', c.getAttribute('data-j')===cur); });

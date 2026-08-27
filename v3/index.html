@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <title>STANDARD</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- This page owns its colours. Dark Reader honours this lock and steps aside. -->
+<meta name="darkreader-lock">
+<meta name="color-scheme" content="light">
 <meta name="theme-color" content="#F4F3EF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="STANDARD">
@@ -27,6 +30,7 @@
       <span class="sub" id="mDate"></span>
       <span class="sp"></span>
       <span class="swatches" id="skins"></span>
+      <button class="tbtn" id="bGuide" title="What everything means">?</button>
       <button class="tbtn" id="bSet">Settings</button>
     </div>
     <div class="tape" id="tape"></div>
@@ -34,8 +38,10 @@
 
   <!-- ======================= JUMP (mobile) ======================= -->
   <div class="jump" id="jump">
-    <button data-j="jLog" class="on">Log</button>
-    <button data-j="jRead">Read</button>
+    <button data-j="jIn" class="on">Input</button>
+    <button data-j="jDay">Day</button>
+    <button data-j="jRec">Record</button>
+    <button data-j="jRate">Rating</button>
     <button data-j="jStand">Standards</button>
     <button data-j="jCircle">Circle</button>
   </div>
@@ -43,70 +49,205 @@
   <!-- ======================= SHEET ======================= -->
   <div class="grid">
 
-    <!-- ---------------- LEFT: the working surface ---------------- -->
+    <!-- ================= LEFT — THE THREE INPUTS ================= -->
     <div class="colL">
-      <section id="jLog">
-        <div class="sh"><h2>Log</h2><span class="ln"></span><span class="c" id="logC"></span></div>
-        <div class="rail" id="rail"></div>
-        <div class="tools">
-          <div class="seg" id="sortSeg">
-            <button data-s="order" class="on">Order</button>
-            <button data-s="undone">Undone</button>
-            <button data-s="weak">Weakest</button>
-            <button data-s="heavy">Heaviest</button>
+      <section id="jIn">
+
+        <div class="band">Input · the three things you put in</div>
+
+        <!-- ---- 1. COMPLETION ---- -->
+        <div class="blk">
+          <div class="sh"><h2><i class="n">1</i>Completion</h2><span class="ln"></span><span class="c" id="logC"></span></div>
+          <div class="rail" id="rail"></div>
+          <div class="tools">
+            <div class="seg" id="sortSeg">
+              <button data-s="order" class="on">Order</button>
+              <button data-s="undone">Undone</button>
+              <button data-s="weak">Weakest</button>
+              <button data-s="heavy">Heaviest</button>
+              <button data-s="az">A–Z</button>
+            </div>
+            <div class="seg" id="grpSeg">
+              <button data-g="all" class="on">All</button>
+              <button data-g="daily">Daily</button>
+              <button data-g="weekly">Weekly</button>
+            </div>
+            <input class="find" id="find" placeholder="filter…" autocomplete="off">
+            <button class="tbtn" id="bAllOff" title="Clear every mark on this day">Clear</button>
           </div>
-          <input class="find" id="find" placeholder="filter…" autocomplete="off">
-          <button class="tbtn" id="bAllOff" title="Clear the day">Clear</button>
+          <div class="log" id="log"></div>
+          <div class="tools" style="padding-top:12px">
+            <button class="btn pri" id="bClose" style="flex:1">Close the day</button>
+          </div>
         </div>
-        <div class="log" id="log"></div>
-        <div class="tools" style="padding-top:12px">
-          <button class="btn pri" id="bClose" style="flex:1">Close the day</button>
-          <button class="btn" id="bNote">Note</button>
+
+        <!-- ---- 2. RATING ---- -->
+        <div class="blk">
+          <div class="sh"><h2><i class="n">2</i>Rate the day</h2><span class="ln"></span><span class="c" id="rateC">1 low · 10 high</span></div>
+          <div class="pan">
+            <div class="rate" id="rate"></div>
+            <label class="fld" style="border:0;padding:10px 0 0">
+              <span class="lab">Why was it that number?</span>
+              <textarea id="iWhy" rows="2" placeholder="Because…"></textarea>
+            </label>
+          </div>
         </div>
-        <div class="note" id="dayNote" style="padding:10px 0 0"></div>
+
+        <!-- ---- 3. JOURNAL ---- -->
+        <div class="blk">
+          <div class="sh"><h2><i class="n">3</i>Journal</h2><span class="ln"></span><span class="c" id="jrnC">saves as you type</span></div>
+          <div class="pan">
+            <label class="fld"><span class="lab">Tasks completed today</span>
+              <textarea id="iTasks" rows="3" placeholder="- Closed X&#10;- Called Y"></textarea></label>
+            <label class="fld" style="border:0"><span class="lab">Prayer journal</span>
+              <textarea id="iPrayer" rows="3" placeholder="Father…"></textarea></label>
+          </div>
+        </div>
+
       </section>
     </div>
 
-    <!-- ---------------- RIGHT: the instruments ---------------- -->
+    <!-- ================= RIGHT — THE OUTPUTS ================= -->
     <div class="colR">
 
-      <section id="jRead">
-        <div class="blk"><div class="sh"><h2>Where the day goes</h2><span class="ln"></span><span class="c">24h · committed vs done</span></div><div class="pan"><svg class="sank" id="sank"></svg></div></div>
-<div class="blk"><div class="sh"><h2>Record</h2><span class="ln"></span><span class="c" id="heatC"></span></div>
-        <div class="pan">
-          <div class="mrow" id="mrow"></div>
-          <div class="heat" id="heat"></div>
-        </div></div>
-<div class="blk"><div class="sh"><h2>Trend</h2><span class="ln"></span><span class="c" id="trendC">90 days</span></div><div class="pan"><svg class="chart" id="chart"></svg></div></div>
-<div class="blk"><div class="sh"><h2>Momentum</h2><span class="ln"></span><span class="c">7d vs prior 7d</span></div>
-        <div class="pan" id="momo"></div></div>
-<div class="blk"><div class="sh"><h2>By day of week</h2><span class="ln"></span><span class="c">where you leak</span></div>
-        <div class="pan"><div class="cols" id="dow"></div></div></div>
-<div class="blk"><div class="sh"><h2>Grade distribution</h2><span class="ln"></span><span class="c" id="gdC"></span></div>
-        <div class="pan"><div class="cols" id="gdist"></div></div></div>
+      <!-- ---------------- THE DAY ---------------- -->
+      <section id="jDay">
+        <div class="band">Output · this day</div>
 
+        <div class="blk">
+          <div class="sh"><h2>Where the day goes</h2><span class="ln"></span><span class="c">24h · committed vs done</span></div>
+          <div class="pan"><svg class="sank" id="sank"></svg></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Time ledger</h2><span class="ln"></span><span class="c">last 30</span></div>
+          <div class="pan" id="tledger"></div>
+        </div>
       </section>
 
+      <!-- ---------------- THE RECORD ---------------- -->
+      <section id="jRec">
+        <div class="band">Output · the record</div>
+
+        <div class="blk">
+          <div class="sh"><h2>Every day logged</h2><span class="ln"></span><span class="c" id="heatC"></span></div>
+          <div class="pan">
+            <div class="mrow" id="mrow"></div>
+            <div class="heat" id="heat"></div>
+            <div class="legend" id="heatLeg"></div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Month</h2><span class="ln"></span><span class="c" id="calNav"></span></div>
+          <div class="pan">
+            <div class="seg mini" id="calMode">
+              <button data-m="pct" class="on">Completion</button>
+              <button data-m="rate">Rating</button>
+            </div>
+            <div class="cal" id="cal"></div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Trend</h2><span class="ln"></span><span class="c" id="trendC">90 days</span></div>
+          <div class="pan"><svg class="chart" id="chart"></svg></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Momentum</h2><span class="ln"></span><span class="c">7d vs prior 7d</span></div>
+          <div class="pan" id="momo"></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>By day of week</h2><span class="ln"></span><span class="c">where you leak</span></div>
+          <div class="pan"><div class="cols" id="dow"></div></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>By month</h2><span class="ln"></span><span class="c" id="byMoC">completion, Jan–Dec</span></div>
+          <div class="pan"><div class="cols" id="byMo"></div></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>By year</h2><span class="ln"></span><span class="c">all time</span></div>
+          <div class="pan" id="byYear"></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Grade distribution</h2><span class="ln"></span><span class="c" id="gdC"></span></div>
+          <div class="pan"><div class="cols" id="gdist"></div></div>
+        </div>
+      </section>
+
+      <!-- ---------------- RATING ---------------- -->
+      <section id="jRate">
+        <div class="band">Output · how it felt</div>
+
+        <div class="blk">
+          <div class="sh"><h2>Daily rating</h2><span class="ln"></span><span class="c" id="rTrendC">90 days</span></div>
+          <div class="pan"><svg class="chart" id="rChart"></svg></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Rating against completion</h2><span class="ln"></span><span class="c">the honest question</span></div>
+          <div class="pan"><svg class="chart scatter" id="rScat"></svg><div class="note" id="rScatN" style="padding-top:8px"></div></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Rating by month</h2><span class="ln"></span><span class="c">average, Jan–Dec</span></div>
+          <div class="pan"><div class="cols" id="rByMo"></div></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Journal</h2><span class="ln"></span><span class="c" id="jArcC">most recent</span></div>
+          <div class="pan" id="jArc"></div>
+        </div>
+      </section>
+
+      <!-- ---------------- STANDARDS ---------------- -->
       <section id="jStand">
-        <div class="blk"><div class="sh"><h2>Every standard</h2><span class="ln"></span><span class="c" id="phC">weakest first</span></div>
-        <div class="pan" id="perHabit"></div></div>
-<div class="blk"><div class="sh"><h2>Cost against adherence</h2><span class="ln"></span><span class="c">minutes vs % done</span></div>
-        <div class="pan"><svg class="chart scatter" id="scat"></svg><div class="note" id="scatN" style="padding-top:8px"></div></div></div>
-<div class="blk"><div class="sh"><h2>Streaks</h2><span class="ln"></span><span class="c">current · longest</span></div>
-        <div class="pan" id="streaks"></div></div>
-<div class="blk"><div class="sh"><h2>By group</h2><span class="ln"></span><span class="c">last 30</span></div>
-        <div class="pan" id="groups"></div></div>
-<div class="blk"><div class="sh"><h2>Time ledger</h2><span class="ln"></span><span class="c">last 30</span></div>
-        <div class="pan" id="tledger"></div></div>
+        <div class="band">Output · the standards themselves</div>
 
+        <div class="blk">
+          <div class="sh"><h2>Every standard</h2><span class="ln"></span><span class="c" id="phC">weakest first</span></div>
+          <div class="pan" id="perHabit"></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Cost against adherence</h2><span class="ln"></span><span class="c">does price explain the misses?</span></div>
+          <div class="pan"><svg class="chart scatter" id="scat"></svg><div class="note" id="scatN" style="padding-top:8px"></div></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Streaks</h2><span class="ln"></span><span class="c">current · longest</span></div>
+          <div class="pan" id="streaks"></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>By group</h2><span class="ln"></span><span class="c">last 30</span></div>
+          <div class="pan" id="groups"></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Next move</h2><span class="ln"></span><span class="c">highest leverage</span></div>
+          <div class="pan" id="nextMove"></div>
+        </div>
       </section>
 
+      <!-- ---------------- CIRCLE / LIFE ---------------- -->
       <section id="jCircle">
-        <div class="blk"><div class="sh"><h2>Circle</h2><span class="ln"></span><button class="c" id="bCircle">manage</button></div>
-        <div class="pan" id="circle"><div class="empty">Loading…</div></div></div>
-<div class="blk"><div class="sh"><h2>Life</h2><span class="ln"></span><span class="c" id="lifeC"></span></div>
-        <div class="pan"><div class="life" id="life"></div></div></div>
+        <div class="band">Output · other people, and the clock</div>
 
+        <div class="blk">
+          <div class="sh"><h2>Circle</h2><span class="ln"></span><button class="c" id="bCircle">manage</button></div>
+          <div class="pan" id="circle"><div class="empty">Loading…</div></div>
+        </div>
+
+        <div class="blk">
+          <div class="sh"><h2>Life</h2><span class="ln"></span><span class="c" id="lifeC"></span></div>
+          <div class="pan"><div class="life" id="life"></div></div>
+        </div>
       </section>
 
     </div>
