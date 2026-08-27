@@ -153,7 +153,12 @@
         if (typeof renderGroup === 'function') renderGroup();
       }
     } catch (e) {
-      say('Could not join: ' + ((e && e.message) || e), true);
+      /* The function raises for an unknown code rather than returning one, so
+         a typo arrives here as a database string. Nobody should be shown that. */
+      var m = String((e && e.message) || e);
+      if (/NO_SUCH_CIRCLE/.test(m)) say('That code does not match any circle. Check it and try again.', true);
+      else if (/duplicate|already/i.test(m)) { say('You are already in that circle.'); refresh(); }
+      else say('Could not join: ' + m, true);
     }
     busy = false;
   }
