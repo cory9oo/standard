@@ -126,3 +126,19 @@
   body.desktop.editing #viewEdit{display:block!important}
   body.desktop.editing #colA,body.desktop.editing #colB,body.desktop.editing #colC,body.desktop.editing #viewLife{display:none!important}
   body.desktop header{max-width:1780px;margin:0 auto}
+
+
+/* ---- time budget bar (budget.js) ---- */
+#budgetBar{border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin:0 0 14px;background:var(--card2)}
+#budgetBar .brow{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+#budgetBar .bnum{font-size:24px;font-weight:700;letter-spacing:-.6px;line-height:1}
+#budgetBar .bsub{font-size:12px;color:var(--ink2);line-height:1.65;margin-top:7px}
+#budgetBar.ok .bnum{color:#54d18c}
+#budgetBar.watch .bnum{color:#e8b84b}
+#budgetBar.over .bnum{color:#e8654b}
+#budgetBar .bmeter{height:6px;border-radius:4px;background:var(--line);margin-top:11px;overflow:hidden}
+#budgetBar .bfill{height:100%;border-radius:4px;transition:width .18s ease}
+.mrow .r2{flex-wrap:wrap}
+.minbox,.floorbox{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ink2);white-space:nowrap}
+.minbox input{width:54px}
+.floorbox input{width:auto}

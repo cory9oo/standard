@@ -57,7 +57,8 @@ async function uidFor(handle) {
 }
 
 /* Map a database habit row to the shape the UI has always received. */
-const toUiHabit = h => ({ id: h.id, group: h.group_name, name: h.name, cadence: h.cadence, link: h.link || '' });
+const toUiHabit = h => ({ id: h.id, group: h.group_name, name: h.name, cadence: h.cadence, link: h.link || '',
+  tier: h.tier === 'floor' ? 'floor' : 'standard', minutes: h.minutes || 0 });
 
 async function habitsOf(uid, includeInactive) {
   let q = sb.from('habits').select('*').eq('user_id', uid);
@@ -292,7 +293,8 @@ API.getHabitsFull = async function (user) {
   const habits = await habitsOf(uid, true);
   return JSON.stringify(habits.map(h => ({
     id: h.id, group: h.group_name, name: h.name, cadence: h.cadence,
-    active: h.active ? 'yes' : 'no', link: h.link || ''
+    active: h.active ? 'yes' : 'no', link: h.link || '',
+    tier: h.tier === 'floor' ? 'floor' : 'standard', minutes: h.minutes || 0
   })));
 };
 
@@ -307,7 +309,9 @@ API.updateHabits = async function (user, habitsJson) {
     const row = {
       user_id: uid, name: x.name, group_name: x.group || 'Standards',
       cadence: x.cadence === 'weekly' ? 'weekly' : 'daily',
-      active: String(x.active) !== 'no', link: x.link || null, sort_order: i
+      active: String(x.active) !== 'no', link: x.link || null, sort_order: i,
+      tier: x.tier === 'floor' ? 'floor' : 'standard',
+      minutes: Math.max(0, Math.min(600, parseInt(x.minutes, 10) || 0))
     };
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(x.id || ''));
     if (isUuid) {

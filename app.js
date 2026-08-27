@@ -528,7 +528,9 @@ function renderEditor(){
           '<option value="daily"' + (h.cadence !== 'weekly' ? ' selected' : '') + '>daily</option>' +
           '<option value="weekly"' + (h.cadence === 'weekly' ? ' selected' : '') + '>weekly</option>' +
         '</select>' +
-        '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" style="width:auto"' + (h.active !== 'no' ? ' checked' : '') + ' onchange="editCache[' + i + '].active=this.checked?\'yes\':\'no\';habitsDirty(true)">on</label>' +
+        '<label style="display:flex;align-items:center;gap:4px"><input type="checkbox" style="width:auto"' + (h.active !== 'no' ? ' checked' : '') + ' onchange="editCache[' + i + '].active=this.checked?\'yes\':\'no\';budgetTick_(editCache);habitsDirty(true)">on</label>' +
+        '<label class="minbox" title="minutes this costs on a normal day">'          + '<input type="number" min="0" max="600" step="5" value="' + (h.minutes || 0) + '" oninput="editCache[' + i + '].minutes=Math.max(0,parseInt(this.value,10)||0);budgetTick_(editCache);habitsDirty()">min</label>' +
+        '<label class="floorbox" title="FLOOR: the part that is never missed, on any day"><input type="checkbox"' + (h.tier === 'floor' ? ' checked' : '') + ' onchange="editCache[' + i + '].tier=this.checked?&quot;floor&quot;:&quot;standard&quot;;budgetTick_(editCache);habitsDirty(true)">floor</label>' +
         '<button class="del" style="border-color:var(--line);color:var(--ink2);margin-left:auto" onclick="moveHabit(' + i + ',-1)">&#9650;</button>' +
         '<button class="del" style="border-color:var(--line);color:var(--ink2);margin-left:0" onclick="moveHabit(' + i + ',1)">&#9660;</button>' +
         '<button class="del" style="margin-left:0" onclick="editCache.splice(' + i + ',1);renderEditor();habitsDirty(true)">delete</button>' +
@@ -536,7 +538,8 @@ function renderEditor(){
       '<div class="r1" style="margin:7px 0 0"><input type="text" placeholder="motivation link (optional)" value="' + String(h.link || '').replace(/"/g, '&quot;') + '" oninput="editCache[' + i + '].link=this.value;habitsDirty()"></div>' +
       '</div>';
   });
-  document.getElementById('editList').innerHTML = html;
+  document.getElementById('editList').innerHTML =
+    (window.budgetBar_ ? window.budgetBar_(editCache) : '') + html;
 }
 function moveHabit(i, dir){
   var j = i + dir;
@@ -546,7 +549,7 @@ function moveHabit(i, dir){
   habitsDirty(true);   // order is saved exactly as listed - Day view follows it
 }
 function addHabit(){
-  editCache.push({ id: '', group: 'Standards', name: '', cadence: 'daily', active: 'yes', link: '' });
+  editCache.push({ id: '', group: 'Standards', name: '', cadence: 'daily', active: 'yes', link: '', tier: 'standard', minutes: 0 });
   renderEditor();
   habitsDirty(true);
 }
@@ -806,17 +809,17 @@ function boot(){
    offer a starting point - examples to edit, not a blank page and not a copy
    of somebody else's life. */
 var STARTER = [
-  {group:'Morning',   name:'Wake at your set time',            cadence:'daily'},
-  {group:'Morning',   name:'Move your body - 30 minutes',      cadence:'daily'},
-  {group:'Morning',   name:'10 minutes of quiet, prayer or reading', cadence:'daily'},
-  {group:'Afternoon', name:'Hit your protein target',          cadence:'daily'},
-  {group:'Afternoon', name:'Drink your water',                 cadence:'daily'},
-  {group:'Night',     name:'Write tomorrow\'s list',            cadence:'daily'},
-  {group:'Night',     name:'Read 10 pages',                    cadence:'daily'},
-  {group:'Standards', name:'No phone in bed',                  cadence:'daily'},
-  {group:'Standards', name:'Nothing to eat 3 hours before sleep', cadence:'daily'},
-  {group:'Standards', name:'Speak to one new person',          cadence:'daily'},
-  {group:'Weekly',    name:'One long walk or run',             cadence:'weekly'}
+  {group:'Morning',   name:'Wake at your set time',            cadence:'daily', minutes:0, tier:'standard'},
+  {group:'Morning',   name:'Move your body - 30 minutes',      cadence:'daily', minutes:30, tier:'standard'},
+  {group:'Morning',   name:'10 minutes of quiet, prayer or reading', cadence:'daily', minutes:10, tier:'floor'},
+  {group:'Afternoon', name:'Hit your protein target',          cadence:'daily', minutes:0, tier:'standard'},
+  {group:'Afternoon', name:'Drink your water',                 cadence:'daily', minutes:0, tier:'standard'},
+  {group:'Night',     name:'Write tomorrow\'s list',            cadence:'daily', minutes:10, tier:'floor'},
+  {group:'Night',     name:'Read 10 pages',                    cadence:'daily', minutes:15, tier:'standard'},
+  {group:'Standards', name:'No phone in bed',                  cadence:'daily', minutes:0, tier:'floor'},
+  {group:'Standards', name:'Nothing to eat 3 hours before sleep', cadence:'daily', minutes:0, tier:'standard'},
+  {group:'Standards', name:'Speak to one new person',          cadence:'daily', minutes:5, tier:'standard'},
+  {group:'Weekly',    name:'One long walk or run',             cadence:'weekly', minutes:45, tier:'standard'}
 ];
 function emptyState_(){
   var box = document.getElementById('list');
@@ -836,7 +839,7 @@ function emptyState_(){
   document.getElementById('starterList').innerHTML = s;
 }
 function useStarter_(){
-  var list = STARTER.map(function(x, i){ return { id:'', name:x.name, group:x.group, cadence:x.cadence, active:'yes', link:'' }; });
+  var list = STARTER.map(function(x, i){ return { id:'', name:x.name, group:x.group, cadence:x.cadence, active:'yes', link:'', tier:x.tier||'standard', minutes:x.minutes||0 }; });
   google.script.run
     .withSuccessHandler(function(res){ state = JSON.parse(res); render(); applyLayout(); })
     .withFailureHandler(function(e){ showError((e && e.message) || e, 'saving your starter list'); })
