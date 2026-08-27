@@ -59,8 +59,12 @@
   function stateOf(row) {
     if (!row) return 'none';
     if (row.scoped) return 'scoped';
-    if (row.floor_pct != null && row.floor_pct < 100) return 'breach';
     if (row.pct >= 90) return 'clean';
+    /* A day that is still running cannot be a breach. Declaring one at 8pm
+       because the evening block has not happened yet would be a false record,
+       and a false record is worse than a missing one. */
+    if (row.date && row.date === S.date) return 'open';
+    if (row.floor_pct != null && row.floor_pct < 100) return 'breach';
     return 'held';
   }
 
@@ -81,7 +85,9 @@
   }
   function breaches(n) {
     var cut = new Date(); cut.setDate(cut.getDate() - n);
-    return S.days.filter(function (r) { return dnum(r.date) >= cut && stateOf(r) === 'breach'; }).length;
+    return S.days.filter(function (r) {
+      return r.date !== S.date && dnum(r.date) >= cut && stateOf(r) === 'breach';
+    }).length;
   }
 
   function toast(t) {
@@ -219,8 +225,9 @@
     for (var i = 6; i >= 0; i--) {
       var dt = new Date(c); dt.setDate(c.getDate() - i);
       var k = dayKey(dt), r = S.byDate[k];
-      var st = (k === S.date) ? stateOf({ pct: pct, floor_pct: r ? r.floor_pct : null }) : stateOf(r);
-      if (k === S.date && !pct && !(r && r.pct)) st = 'none';
+      var st = (k === S.date)
+        ? stateOf({ date: k, pct: pct, floor_pct: r ? r.floor_pct : null })
+        : stateOf(r);
       var v = (k === S.date) ? pct : (r ? r.pct : null);
       out += '<div class="cell' + (k === S.date ? ' today' : '') + '">' +
              '<div class="mark ' + st + '">' + (v == null ? '·' : v) + '</div>' +

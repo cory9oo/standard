@@ -190,3 +190,7 @@ nav button.on .dot{background:var(--accent)}
   background:var(--ink);color:var(--canvas);padding:6px 10px;border-radius:6px;opacity:0;transition:opacity 180ms var(--ease)}
 .saving.on{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* a day still running — neither a pass nor a failure yet */
+.mark.open{border:1.5px dashed var(--accent);color:var(--accent)}
+.st.open{color:var(--accent)}
