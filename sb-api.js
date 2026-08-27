@@ -1,14 +1,25 @@
 /* ============================================================
    STANDARD - Supabase data layer.
 
-   This file presents the EXACT interface the existing UI already calls
+   Presents the exact interface the existing UI already calls
    (google.script.run.withSuccessHandler(cb).getStats(user, pin)) and
-   implements it against Postgres instead of a Google Sheet.
+   implements it against Postgres instead of a Google Sheet, so 64KB of
+   working, tested UI never learned the backend moved.
 
-   That is deliberate. 64KB of working, tested UI - the calendar, the
-   charts, the Life grid, the auto-save engine - does not know the
-   backend moved, and does not have to be touched or re-tested.
+   SEALED IN A CLOSURE ON PURPOSE. This file previously declared `const key`
+   at global scope while the app script declares `function key`. Two classic
+   scripts cannot both declare the same global name: the browser raises a
+   parse-time SyntaxError and discards the ENTIRE other script - silently,
+   before any error handler exists. The app painted its static shell and
+   nothing else: no sign-in, no habits, dead tabs, no message. One shared
+   word. Sealing the file makes the whole class of bug impossible.
+
+   Everything below is private. Only the explicit window.* assignments at
+   the bottom are public.
    ============================================================ */
+(function () {
+  'use strict';
+
 
 const SB_URL = 'https://ykxxiwrjuvdvwrfweceo.supabase.co';
 const SB_KEY = 'sb_publishable_ZMRDhEgkKSnbuntc_y_xDA_QirkAxoC';
@@ -24,8 +35,8 @@ let ME = null;                 // { id, handle, display_name }
 const HANDLE_CACHE = {};
 
 /* ---------- small helpers ---------- */
-const key = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-const todayKey = () => key(new Date());
+const dayKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const todayKey = () => dayKey(new Date());
 const dnum = k => new Date(k + 'T12:00:00');
 
 function pctOf(checked, ids) {
@@ -108,7 +119,7 @@ API.getState = async function (user, date) {
   const c = dnum(date);
   for (let j = 6; j >= 0; j--) {
     const dt = new Date(c); dt.setDate(c.getDate() - j);
-    const k = key(dt), r = byDate[k];
+    const k = dayKey(dt), r = byDate[k];
     last7.push({ date: k, dow: dt.getDay(), pct: r ? pctOf(r.checked, idsForDay(r, dailyIds)) : null });
   }
 
@@ -205,7 +216,7 @@ API.getWeek = async function (user, anchor) {
   const out = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(mon); d.setDate(mon.getDate() + i);
-    const k = key(d), rec = byDate[k];
+    const k = dayKey(d), rec = byDate[k];
     out.push({ date: k, dow: d.getDay(), dnum: d.getDate(),
                checked: rec ? rec.checked : {},
                pct: rec ? pctOf(rec.checked, idsForDay(rec, dailyIds)) : null });
@@ -236,7 +247,7 @@ API.getGroup = async function () {
     let sum = 0, n = 0;
     for (let j = 6; j >= 0; j--) {
       const d = new Date(base); d.setDate(base.getDate() - j);
-      const k = key(d), r = byDate[k];
+      const k = dayKey(d), r = byDate[k];
       const pc = r ? pctOf(r.checked, idsForDay(r, dailyIds)) : null;
       last7.push({ date: k, dow: d.getDay(), pct: pc });
       if (pc !== null) { sum += pc; n++; }
@@ -245,7 +256,7 @@ API.getGroup = async function () {
     const todayPct = byDate[today] ? pctOf(byDate[today].checked, idsForDay(byDate[today], dailyIds)) : null;
     if (todayPct === null || todayPct < 80) c.setDate(c.getDate() - 1);
     for (;;) {
-      const ck = key(c), r = byDate[ck];
+      const ck = dayKey(c), r = byDate[ck];
       if (r && pctOf(r.checked, idsForDay(r, dailyIds)) >= 80) { streak++; c.setDate(c.getDate() - 1); } else break;
     }
     let mS = 0, mN = 0, yS = 0, yN = 0;
@@ -367,3 +378,5 @@ window.__SB = sb;
 window.__API = API;
 window.__setMe = p => { ME = p; };
 window.__getMe = () => ME;
+
+})();
