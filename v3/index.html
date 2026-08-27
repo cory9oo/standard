@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>STANDARD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C0C0C" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F3EF" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="STANDARD">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div class="wrap">
+  <div class="mast">
+    <span class="name">Standard</span>
+    <span class="lbl" id="who"></span>
+    <span class="date" id="stamp"></span>
+  </div>
+
+  <!-- ============ TODAY ============ -->
+  <section id="vToday" class="view on">
+    <div class="head">
+      <div class="grade none" id="gradeBox"><div class="g">&mdash;</div><div class="p">no data</div></div>
+      <div class="headside">
+        <div class="ready" id="ready">Reading the ledger&hellip;</div>
+        <div class="budget" id="budget"></div>
+      </div>
+    </div>
+
+    <div class="strip" id="strip"></div>
+
+    <div id="floorSec"></div>
+    <div id="stdSec"></div>
+
+    <div class="sec"><span class="t">Journal</span><span class="c">private to you</span></div>
+    <div class="rule"></div>
+    <div class="jrn" id="jrn"></div>
+  </section>
+
+  <!-- ============ LEDGER ============ -->
+  <section id="vLedger" class="view">
+    <div class="stats" id="lStats"></div>
+    <div class="sec"><span class="t">Ledger</span><span class="c" id="lCount"></span></div>
+    <div class="rule strong"></div>
+    <div id="lRows"></div>
+    <div class="sec"><span class="t">By domain</span><span class="c">last 30 days</span></div>
+    <div class="rule"></div>
+    <div id="lDomain"></div>
+  </section>
+
+  <!-- ============ CIRCLE ============ -->
+  <section id="vCircle" class="view">
+    <div class="sec"><span class="t">Circle</span></div>
+    <div class="rule strong"></div>
+    <div id="cBody"><div class="msg">Loading&hellip;</div></div>
+  </section>
+</div>
+
+<div class="saving" id="save">saved</div>
+
+<nav>
+  <button data-v="Today" class="on"><span class="dot"></span>Today</button>
+  <button data-v="Ledger"><span class="dot"></span>Ledger</button>
+  <button data-v="Circle"><span class="dot"></span>Circle</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
