@@ -148,8 +148,10 @@
       if (r.error) throw r.error;
       if (r.data === 'NO_SUCH_CIRCLE') { say('That code does not match any circle.', true); }
       else {
-        say('You are in. Their days will show below.');
+        /* refresh() rebuilds this box, so the message has to come after it or
+           it is painted and then immediately thrown away. */
         await refresh();
+        say('You are in. Their days will show below.');
         if (typeof renderGroup === 'function') renderGroup();
       }
     } catch (e) {
