@@ -339,11 +339,26 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sb-api.js"></script>
+<script>
+/* Tripwire. If the main app script ever fails to parse again - a duplicate
+   global, a stray character - this fires and says so, instead of leaving a
+   dead shell on screen with no explanation. */
+window.__APP_ALIVE = false;
+window.addEventListener('load', function(){
+  if (window.__APP_ALIVE) return;
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;left:10px;right:10px;top:10px;z-index:999;background:#3a1414;' +
+    'border:1px solid #E05252;color:#ffdada;border-radius:12px;padding:14px;font:13px/1.5 system-ui';
+  d.textContent = 'STANDARD could not start: the app script failed to load. ' +
+                  'Open the console (F12) for the exact line, and send it to Claude.';
+  document.body.appendChild(d);
+});
+</script>
 <script src="./auth.js"></script>
 <script>
 /* Identity comes from the signed-in session, not from a link parameter.
    auth.js sets window.USER before it calls __BOOT(). */
-var BUILD = '2026-08-27.1';   // on screen, so we never again guess which copy is running
+var BUILD = '2026-08-27.2';   // on screen, so we never again guess which copy is running
 var USER = window.USER || '';
 var JOIN = false;
 var BASE_URL = location.origin + location.pathname;
@@ -1165,6 +1180,7 @@ function useStarter_(){
     .updateHabits(USER, JSON.stringify(list), PIN);
 }
 /* Nothing renders until we know who is looking. */
+window.__APP_ALIVE = true;   // the app script parsed and ran to the end
 window.__BOOT = function () {
   var bt = document.getElementById('buildTag'); if (bt) bt.textContent = BUILD;
   USER = window.USER;
