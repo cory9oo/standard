@@ -7,9 +7,11 @@
 
    Now: always try the network, fall back to cache only when offline. The app
    stays usable on a plane and still updates the moment there is signal. */
-const CACHE = 'standard-v3';
-const SHELL = ['./', './index.html', './sb-api.js', './auth.js', './manifest.webmanifest',
-               './icon-192.png', './icon-512.png'];
+const CACHE = 'standard-v4';
+/* Only the entry points are pre-cached. Every script and stylesheet now carries
+   a ?v= stamp that changes with its contents, so they are cached at runtime under
+   URLs that can never collide across versions. */
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -32,7 +34,11 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;    // let the CDN handle its own
 
   e.respondWith(
-    fetch(e.request)
+    /* cache: 'no-cache' revalidates with the server instead of quietly
+       accepting whatever the browser's HTTP cache is holding. Without it a
+       fresh index.html could load a ten-minute-old app.js - two versions of
+       the app running in the same page, which is worse than either. */
+    fetch(e.request, { cache: 'no-cache' })
       .then(res => {
         if (res && res.ok) {
           const copy = res.clone();
