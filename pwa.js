@@ -19,6 +19,8 @@ if ('serviceWorker' in navigator) {
   var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   try { if (localStorage.getItem('ht_a2hs')) return; } catch(e){}
   window.addEventListener('load', function(){
+    // First run owns the install step; a floating banner on top of it is noise.
+    if (document.documentElement.classList.contains('ob-open') || document.getElementById('obOv')) return;
     var b = document.createElement('div');
     b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));'
       + 'z-index:99;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;'
