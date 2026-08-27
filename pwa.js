@@ -2,20 +2,13 @@
 /* ---- PWA runtime: install, offline, push. None of this was possible on Apps Script. ---- */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){ navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function(reg){
-      // Adopt a new version the moment it is ready, and reload once so the
-      // running page is never older than the code on the server.
-      reg.update();   // check for a new version; it activates on the next load
+      // Check for a new version. It installs in the background and takes over
+      // on the next natural load. The page is never reloaded out from under
+      // whoever is using it - a reload loop here froze the app twice, and on a
+      // phone there is no console to see it happen.
+      reg.update();
     }).catch(function(){});
-    // Reload once when a new worker takes over - and never more than once per
-    // session. Without the stored guard this ping-pongs: reload installs a
-    // worker, the worker takes over, controllerchange fires, reload again.
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      try {
-        if (sessionStorage.getItem('ht_swreload')) return;
-        sessionStorage.setItem('ht_swreload', '1');
-      } catch (e) { return; }
-      location.reload();
-    }); });
+  });
 }
 
 /* iOS gives no beforeinstallprompt - the Share > Add to Home Screen path is manual,
