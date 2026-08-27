@@ -1,32 +1,86 @@
+/* ==========================================================================
+   STANDARD — instrument skins.
+   No glass. No blur. No glow. No gradients. No rounded cards.
+   Hairlines and whitespace do all the structuring. One accent.
+   Only the grade ramp is allowed to carry hue.
+   ========================================================================== */
+
+/* ---------- STATEMENT (default) — an institutional document ---------- */
 :root,
-:root[data-skin="obsidian"]{
-  --void:#060709; --base:#0B0D11; --surf:#111419; --rise:#171B22;
-  --line:#20252E; --line2:#2B313C;
-  --ink:#EEF1F6; --ink2:#98A2B3; --ink3:#5B6474;
-  --accent:#4DE8C2; --accent-2:#0F4F44; --accent-ink:#04120F; --glow:rgba(77,232,194,.16);
-  --g0:#FF4D6D; --g1:#FF8A3D; --g2:#FFD23F; --g3:#8CE86B; --g4:#4DE8C2; --g5:#4DD2FF;
+:root[data-skin="statement"]{
+  --ground:#F4F3EF;
+  --sheet:#FCFCFA;
+  --sunk:#EDECE6;
+  --rule:#DBD9D1;
+  --rule2:#C2BFB4;
+  --ink:#14161A;
+  --ink2:#5C6068;
+  --ink3:#93979F;
+  --accent:#B0161C;
+  --accent-ink:#FFFFFF;
+  --accent-wash:#F7E3E3;
+  --sel:#E9E7DF;
+  --bad:#B0161C; --good:#1B6B4A;
+  --g0:#E7DCDA; --g1:#DCC0BD; --g2:#CE9B98; --g3:#C0716F; --g4:#B0161C; --g5:#7C0F14;
 }
-:root[data-skin="gold"]{
-  --void:#070603; --base:#0D0B07; --surf:#14110B; --rise:#1B1710;
-  --line:#282217; --line2:#362E1F;
-  --ink:#F6F1E7; --ink2:#AFA48D; --ink3:#6E6551;
-  --accent:#F0B429; --accent-2:#5A430C; --accent-ink:#140F02; --glow:rgba(240,180,41,.16);
-  --g0:#E5484D; --g1:#F2851E; --g2:#F0B429; --g3:#C7C731; --g4:#5FD08A; --g5:#39C7C7;
+
+/* ---------- CARBON — near-black, white ink, one red ---------- */
+:root[data-skin="carbon"]{
+  --ground:#0A0A0B;
+  --sheet:#0F1012;
+  --sunk:#151619;
+  --rule:#25272C;
+  --rule2:#3A3D45;
+  --ink:#F2F3F5;
+  --ink2:#9BA0A8;
+  --ink3:#5F646D;
+  --accent:#FF3B41;
+  --accent-ink:#0A0A0B;
+  --accent-wash:#2A1113;
+  --sel:#1A1C20;
+  --bad:#FF3B41; --good:#3DDC97;
+  --g0:#2A1416; --g1:#4A181C; --g2:#7A2126; --g3:#B22B31; --g4:#FF3B41; --g5:#FF8A8E;
 }
-:root[data-skin="paper"]{
-  --void:#EFEFEA; --base:#F7F7F3; --surf:#FFFFFF; --rise:#FFFFFF;
-  --line:#E2E2DA; --line2:#D2D2C8;
-  --ink:#131417; --ink2:#5E6470; --ink3:#9AA0AB;
-  --accent:#00806A; --accent-2:#CDEDE4; --accent-ink:#FFFFFF; --glow:rgba(0,128,106,.10);
-  --g0:#C42B3F; --g1:#C4661B; --g2:#A88400; --g3:#5C9B2E; --g4:#00806A; --g5:#0A6E96;
+
+/* ---------- TERMINAL — black, phosphor amber ---------- */
+:root[data-skin="terminal"]{
+  --ground:#050505;
+  --sheet:#0A0A08;
+  --sunk:#101009;
+  --rule:#232112;
+  --rule2:#3A3517;
+  --ink:#F5C542;
+  --ink2:#A8863A;
+  --ink3:#6B5628;
+  --accent:#FF7A18;
+  --accent-ink:#050505;
+  --accent-wash:#2A1608;
+  --sel:#171509;
+  --bad:#FF4A2B; --good:#8FE04A;
+  --g0:#2A1D06; --g1:#4A320A; --g2:#7A5210; --g3:#B07518; --g4:#FF7A18; --g5:#FFB65E;
 }
-@media (prefers-color-scheme:light){
-  :root:not([data-skin]){
-    --void:#EFEFEA; --base:#F7F7F3; --surf:#FFFFFF; --rise:#FFFFFF;
-    --line:#E2E2DA; --line2:#D2D2C8;
-    --ink:#131417; --ink2:#5E6470; --ink3:#9AA0AB;
-    --accent:#00806A; --accent-2:#CDEDE4; --accent-ink:#FFFFFF; --glow:rgba(0,128,106,.10);
-    --g0:#C42B3F; --g1:#C4661B; --g2:#A88400; --g3:#5C9B2E; --g4:#00806A; --g5:#0A6E96;
-  }
+
+/* ---------- BLUEPRINT — deep navy, cyan ---------- */
+:root[data-skin="blueprint"]{
+  --ground:#070C14;
+  --sheet:#0B1220;
+  --sunk:#0F1929;
+  --rule:#1B2942;
+  --rule2:#2A3D5C;
+  --ink:#E6EDF7;
+  --ink2:#8FA3BF;
+  --ink3:#5A6C87;
+  --accent:#28D3F0;
+  --accent-ink:#04121A;
+  --accent-wash:#0B2C36;
+  --sel:#132133;
+  --bad:#FF5470; --good:#3DE0B0;
+  --g0:#0E2C34; --g1:#12414E; --g2:#175A6C; --g3:#1C7E96; --g4:#28D3F0; --g5:#8AEBFA;
 }
-:root{ --nav:66px; --ease:cubic-bezier(.2,0,0,1); --snap:cubic-bezier(.12,0,.08,1); --pad:20px; }
+
+:root{
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --row:32px;
+  --gut:18px;
+}
