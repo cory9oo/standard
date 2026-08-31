@@ -1,221 +1,59 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>STANDARD</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0e0e0f">
-<meta name="color-scheme" content="dark">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="apple-touch-icon" href="./apple-touch-icon.png">
-<!-- iOS still reads the legacy pair; the manifest alone is not enough on Safari. -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="STANDARD">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="stylesheet" href="./app.css?v=a0c8fbdc">
+<title>Habit Tracker</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="darkreader-lock">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#F4F3EF">
+<style>
+  :root{color-scheme:light}
+  html,body{margin:0;height:100%;background:#F4F3EF;color:#1A1917;
+    font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  main{height:100%;display:grid;place-content:center;text-align:center;padding:24px;gap:10px}
+  .wm{font-weight:600;letter-spacing:.02em;font-size:17px}
+  .m{color:#6B6862;max-width:34ch}
+  a{color:#8C2F2A}
+</style>
 </head>
 <body>
-<div id="toast" class="toast">Saved</div>
-<header>
-  <div class="hrow">
-    <div>
-      <h1 id="who">STANDARD</h1><span id="buildTag" style="font-size:10px;color:var(--ink2);opacity:.6;margin-left:8px"></span>
-      <div class="sub" id="dateLabel"></div>
-      <a class="backlink" id="backToday" style="display:none" onclick="loadDay(TODAY);return false" href="#">&#8592; back to today</a>
-    </div>
-    <button onclick="openGuide_()" title="How it works"
-      style="flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink2);font-size:13px;font-weight:700;margin-right:2px">?</button>
-    <div class="ring" id="ringWrap">
-      <svg width="76" height="76" viewBox="0 0 76 76">
-        <circle cx="38" cy="38" r="32" fill="none" stroke="#27292b" stroke-width="7"/>
-        <circle id="ringArc" cx="38" cy="38" r="32" fill="none" stroke="#3FA05A" stroke-width="7"
-                stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="201"/>
-      </svg>
-      <div class="mid"><span id="ringPct">0%</span><small id="ringCt">0/0</small></div>
-    </div>
-  </div>
-</header>
-<div class="strip" id="strip"></div>
-<div class="tabs">
-  <div class="tab on" id="tabToday" onclick="show('today')">Day</div>
-  <div class="tab" id="tabProg" onclick="show('progress')">Progress</div>
-  <div class="tab" id="tabGroup" onclick="show('group')">Group</div>
-  <button class="gear" id="tabEdit" onclick="show('edit')">&#9998;</button>
-</div>
-
-<div id="main">
-<div id="viewToday">
-  <div class="prog"><span id="progLabel">Completion</span>
-    <span class="chipMiss" id="missChip"></span>
-    <span class="chip" id="pct">0%</span></div>
-  <!-- rating/why/tasks sits ABOVE the checklist: journaled first thing + edited all day -->
-  <div class="group"><b>Journal</b><span>rate &middot; why &middot; tasks</span></div>
-  <div class="card" id="ratingCard" style="margin-top:8px">
-    <label>Rate the day (1-10)</label>
-    <div class="ratingRow" id="ratingRow"></div>
-    <label>Why was it that number?</label>
-    <textarea id="note" placeholder="Because..." oninput="markDirty()"></textarea>
-    <label>Tasks completed today</label>
-    <textarea id="tasks" placeholder="- Closed X&#10;- Called Y" oninput="markDirty()"></textarea>
-    <label>Prayer journal</label>
-    <textarea id="prayer" placeholder="Father..." oninput="markDirty()"></textarea>
-    <div class="sub" id="saveState" style="margin-top:8px;text-align:right">auto-saves</div>
-  </div>
-  <div id="list"></div>
-</div>
-
-<div id="viewCal" style="display:none">
-  <div class="chartCard">
-    <div class="calHead">
-      <button class="calBtn" id="calPrev" onclick="calMove(-1)">&#8249;</button>
-      <h3 id="calTitle" style="margin:0"></h3>
-      <div class="seg"><div id="segM" class="on" onclick="calMode('m')">Month</div><div id="segY" onclick="calMode('y')">Year</div></div>
-      <button class="calBtn" id="calNext" onclick="calMove(1)">&#8250;</button>
-    </div>
-    <div class="sub" style="margin-bottom:8px" id="calHint">Tap a day to open it - view and edit that day's checklist.</div>
-    <div class="calGrid" id="calGrid"></div>
-    <div class="yearBox" id="yearBox" style="display:none"></div>
-    <div class="legend">
-      <span><span class="lg" style="background:var(--gF)"></span>F &le;59</span>
-      <span><span class="lg" style="background:var(--gD)"></span>D 60-69</span>
-      <span><span class="lg" style="background:var(--gC)"></span>C 70-79</span>
-      <span><span class="lg" style="background:var(--gB)"></span>B 80-89</span>
-      <span><span class="lg" style="background:var(--gA)"></span>A 90-99</span>
-      <span><span class="lg" style="background:var(--gAp)"></span>A+ 100</span>
-    </div>
-  </div>
-</div>
-
-<div id="viewStats" style="display:none">
-  <div class="group" id="grpScore"><b>Scoreboard</b><span>where you stand</span></div>
-  <div class="statRow" id="sbRow1">
-    <div class="stat"><div class="v" id="stCur">-</div><div class="l">CURRENT STREAK (80%+ DAYS)</div></div>
-    <div class="stat"><div class="v" id="stBest">-</div><div class="l">BEST STREAK</div></div>
-  </div>
-  <div class="statRow" id="sbRow2">
-    <div class="stat"><div class="v" id="s30">-</div><div class="l">30-DAY AVG %</div></div>
-    <div class="stat"><div class="v" id="sYr">-</div><div class="l">YEAR AVG %</div></div>
-    <div class="stat"><div class="v" id="sRate">-</div><div class="l">AVG DAY RATING</div></div>
-  </div>
-
-  <div class="group" id="grpComp"><b>Completion</b><span>what you did</span></div>
-  <div class="chartCard" id="cardComp">
-    <div class="calHead">
-      <button class="calBtn" onclick="compMove(-1)">&#8249;</button>
-      <h3 id="compTitle" style="margin:0">Daily completion %</h3>
-      <button class="calBtn" onclick="compMove(1)">&#8250;</button>
-    </div>
-    <div class="sub" style="margin-bottom:6px">One point per day - tap a point to open that day.</div>
-    <canvas id="cDaily"></canvas>
-  </div>
-  <div class="chartCard" id="cardCompM"><h3 id="mTitle">Monthly completion % (Jan-Dec)</h3><canvas id="cMonthly"></canvas></div>
-  <div class="chartCard" id="cardCompY"><h3>Yearly completion %</h3><div id="yearlyTiles" class="statRow" style="margin:0"></div></div>
-
-  <div class="group" id="grpRate"><b>Day rating</b><span>how the days felt</span></div>
-  <div class="chartCard" id="cardRate">
-    <div class="calHead">
-      <button class="calBtn" onclick="ratingMove(-1)">&#8249;</button>
-      <h3 id="ratingTitle" style="margin:0">Daily rating</h3>
-      <button class="calBtn" onclick="ratingMove(1)">&#8250;</button>
-    </div>
-    <div class="sub" style="margin-bottom:6px">One point per day - tap a point to open that day and read your why.</div>
-    <canvas id="cRating"></canvas>
-  </div>
-  <div class="chartCard" id="cardRateM"><h3 id="mrTitle">Monthly avg rating (Jan-Dec)</h3><canvas id="cRatingM"></canvas></div>
-
-  <div class="group" id="grpHabits"><b>Habits</b><span>where the fight is</span></div>
-  <div class="chartCard" id="cardHabits"><h3>Weakest habits (last 30 days)</h3><div id="habitBars"></div></div>
-
-</div>
-
-<div id="viewLife" style="display:none">
-  <div class="group" id="grpLife"><b>Life Visualized</b><span id="lifeSub">100 years of days</span></div>
-  <div class="chartCard" id="lifeCard">
-    <div class="statRow" style="margin:0 0 10px">
-      <div class="stat"><div class="v" id="lifeLived" style="color:var(--gF)">-</div><div class="l">DAYS LIVED</div></div>
-      <div class="stat"><div class="v" id="lifeLeft" style="color:var(--gA)">-</div><div class="l">DAYS LEFT</div></div>
-      <div class="stat"><div class="v" id="lifePctL" style="color:var(--gF)">-</div><div class="l">% LIVED</div></div>
-      <div class="stat"><div class="v" id="lifePctR" style="color:var(--gA)">-</div><div class="l">% LEFT</div></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap">
-      <label style="flex:none;font-weight:700">Your birthday</label>
-      <input type="text" id="lifeBirth" placeholder="03/18/2001" style="max-width:140px;padding:8px" onchange="birthChanged_()">
-      <span class="sub" id="lifeBirthState">chart is drawn from this date</span>
-    </div>
-    <canvas id="lifeCanvas"></canvas>
-    <div class="sub" style="margin-top:8px">One row per year of life (age 0-99), one dot per day, anchored on your birthday.
-    Dim red = days already spent. Colored = days you tracked here, painted with their grade. Dark = the days still ahead. Advances by itself, every day.</div>
-  </div>
-</div>
-
-<div id="viewGroup" style="display:none">
-  <div class="group" id="grpGroup"><b>Group</b><span>iron sharpens iron</span></div>
-  <div id="groupList"></div>
-  <div class="sub" style="margin:4px 18px 12px">Only completion %s are shared. Journals, whys, and tasks stay private to each person.</div>
-</div>
-
-<div id="errBar" onclick="this.style.display='none'"
-     style="display:none;position:fixed;left:10px;right:10px;top:calc(8px + env(safe-area-inset-top));z-index:300;
-            background:#3a1414;border:1px solid #E05252;color:#ffdada;border-radius:12px;padding:12px 14px;
-            font-size:13px;line-height:1.5;box-shadow:0 10px 30px rgba(0,0,0,.5)"></div>
-
-<div id="viewEdit" style="display:none">
-  <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-    <div><b style="color:var(--ink)">Signed in</b>
-      <div class="sub" id="whoAmI" style="margin-top:2px"></div></div>
-    <button class="save" style="position:static;flex:none;padding:10px 16px;background:var(--card2);color:var(--ink)"
-            onclick="window.__signOut()">Sign out</button>
-  </div>
-  <div class="card" style="font-size:13px;color:var(--ink2);display:flex;justify-content:space-between;align-items:center;gap:10px">
-    <span>Edit anything - wording, category, cadence, link, on/off. <b style="color:var(--ink)">Everything auto-saves.</b></span>
-    <span class="sub" id="editSaveState" style="flex:none">auto-saves</span>
-  </div>
-  <div id="editList"></div>
-  <button class="addBtn" onclick="addHabit()">+ Add habit</button>
-</div>
-
-<div id="joinGate" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:60;padding:34px 22px;overflow:auto">
-  <div style="max-width:440px;margin:0 auto">
-    <h1 style="margin-bottom:2px">STANDARD</h1>
-    <div class="sub" style="margin-bottom:16px">Join the group - 60 seconds.</div>
-    <div class="card" style="margin:0 0 12px">
-      <label>Pick your name (letters/numbers, this becomes your link)</label>
-      <input type="text" id="jName" placeholder="andrew" style="margin-bottom:12px">
-      <label>Display name (what the group sees)</label>
-      <input type="text" id="jDisplay" placeholder="Andrew" style="margin-bottom:12px">
-      <label>Create a 4-digit PIN (keeps your tracker private)</label>
-      <input type="password" id="jPin" inputmode="numeric" maxlength="4" style="margin-bottom:12px">
-      <label>Your email (your private Habit Journal doc gets shared here)</label>
-      <input type="text" id="jEmail" placeholder="you@gmail.com" style="margin-bottom:12px">
-      <label>Your birthday (drives your private Life Visualized view)</label>
-      <input type="text" id="jBirth" placeholder="03/18/2001" style="margin-bottom:12px">
-      <label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45">
-        <input type="checkbox" id="jPriv" style="width:auto;margin-top:2px">
-        <span><b style="color:var(--ink)">Privacy:</b> your journal, whys, tasks, and birthday are yours alone - protected by your PIN.
-        The group sees your habit list, checkmarks, and completion percentages - never your words. Same both directions.</span>
-      </label>
-      <button class="save" style="position:static;width:100%;margin-top:14px" onclick="joinSubmit()">Create my tracker</button>
-      <div class="sub" id="jErr" style="margin-top:10px;color:#e08b8b"></div>
-    </div>
-    <div class="card" style="margin:0 0 12px">
-      <label style="font-weight:700;color:var(--ink)">Already joined? Open your tracker</label>
-      <input type="text" id="lName" placeholder="your name" style="margin:10px 0">
-      <input type="password" id="lPin" inputmode="numeric" maxlength="4" placeholder="your 4-digit PIN" style="margin-bottom:12px">
-      <button class="save" style="position:static;width:100%" onclick="loginGo()">Open my tracker</button>
-      <div class="sub" id="lErr" style="margin-top:8px;color:#e08b8b"></div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./sb-api.js?v=a0c8fbdc"></script>
-<script src="./auth.js?v=a0c8fbdc"></script>
-<script src="./budget.js?v=a0c8fbdc"></script>
-<script src="./app.js?v=a0c8fbdc"></script>
-<script src="./onboarding.js?v=a0c8fbdc"></script>
-<script src="./circles.js?v=a0c8fbdc"></script>
-<script src="./pwa.js?v=a0c8fbdc"></script>
+<main>
+  <div class="wm">Habit&nbsp;Tracker</div>
+  <div class="m" id="m">This address has moved. Taking you to the app&hellip;</div>
+  <div class="m"><a id="go" href="./v3/">Open the app</a></div>
+</main>
+<script>
+/* TOMBSTONE — retires the legacy Apps-Script-era app (ISS-033 TWO_WRITERS_ONE_TRUTH).
+   Three jobs, in this order, and the order matters:
+     1. unregister ONLY the legacy service worker (scope .../standard/). The v7 worker at
+        .../standard/v3/ must survive — killing it would take the live app offline-blind.
+     2. delete ONLY the legacy cache ('standard-v4'). Caches are per-ORIGIN, not per-path:
+        both workers' activate handlers delete every cache but their own, which is how these
+        two apps have been evicting each other's offline shell. Do not touch 'standard-v7'
+        or its successor.
+     3. redirect to the live app.
+   The legacy worker was NETWORK-FIRST, which is the only reason an installed phone can
+   receive this page at all. A cache-first worker could not have been retired remotely. */
+(async function(){
+  var LEGACY_SCOPE = new URL('./', location.href).href;   // .../standard/
+  var KEEP = /^ht-v|^standard-v7$/;                        // current + successor cache names
+  try {
+    if (navigator.serviceWorker) {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for (var i=0;i<regs.length;i++){
+        if (regs[i].scope === LEGACY_SCOPE) { await regs[i].unregister(); }
+      }
+    }
+  } catch(e){}
+  try {
+    var keys = await caches.keys();
+    for (var j=0;j<keys.length;j++){
+      if (!KEEP.test(keys[j])) { await caches.delete(keys[j]); }
+    }
+  } catch(e){}
+  location.replace('./v3/');
+})();
+</script>
 </body>
 </html>

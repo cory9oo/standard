@@ -11,9 +11,13 @@ git config gc.auto 0
 git config maintenance.auto false
 ```
 
-- **Never `git checkout .`** and never `git stash` to "clean" this tree. Under `BEV\` every file
-  shows as ` M ` from CRLF display noise. `git diff --stat` proves it: **24 files changed,
-  0 insertions, 0 deletions**. A clean tree here looks dirty. Discarding it destroys real work.
+- **Never `git checkout .`** and never `git stash` to "clean" this tree. A clean tree here can look
+  dirty — but **the cause is the executable bit, not CRLF** (diagnosed 4-HT 2026-08-31, correcting
+  the estate-wide belief). The FUSE mount reports every file `100755` against an index of `100644`,
+  so git prints `old mode/new mode` hunks with **zero content lines**; `git ls-files --eol` reads
+  `i/lf w/lf`, i.e. the line endings were never wrong. The fix is one local setting, already applied
+  here: `git config core.fileMode false` — after it, `git status --porcelain` is 0 and trustworthy
+  again. Discarding a "dirty" tree without checking destroys real work.
 - **Deletes are refused on the mount.** A stale `.git/*.lock` cannot be unlinked. Sweep it by
   MOVING it: `mv .git/index.lock ..\_archive\index-locks-<date>\` — never assume `rm` worked.
 - **`git clone` cannot complete inside the mount** (ISS-041-proposed, found 4-HT 2026-08-31):
