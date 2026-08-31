@@ -1,4 +1,4 @@
-# CLAUDE.md — `standard` (STANDARD v7, the self-ledger)
+# CLAUDE.md — `standard` (HT · Habit Tracker, the self-ledger)
 
 **Read `..\life-taxonomy\DOCTRINE_INDEX.md` before the first substantive tool call (D13.1).**
 This file is repo-operational law per D10 and carries the mount countermeasure per ISS-036/ISS-037.
@@ -27,13 +27,19 @@ git config maintenance.auto false
 
 ## WHAT THIS REPO IS
 
-GitHub Pages, two live apps against ONE Supabase project — **ISS-033 `TWO_WRITERS_ONE_TRUTH`,
-open**:
+GitHub Pages. **One app.** ISS-033 `TWO_WRITERS_ONE_TRUTH` was **CLOSED 2026-08-31** (WIRE HT-2,
+`ad4f80b`): the legacy Apps-Script-era app was archived out of the repo and root became a
+tombstone. Two apps once shared this origin, and their service workers deleted each other's cache
+on every activate — **do not reintroduce a second app here.**
 
-| Path | Files | What |
-|---|---|---|
-| `/` (root) | 17 tracked | the legacy Apps-Script-era app, still served, still writing |
-| `/v3/` | 7 tracked | **STANDARD v7** — the live instrument, HEAD `5a21a878` |
+| Path | What |
+|---|---|
+| `/` (root) | tombstone: unregisters the legacy worker, drops the legacy cache, redirects to `./v3/`. Plus the three shared icons — **`v3/` links them as `../icon-192.png`, `../icon-512.png`, `../apple-touch-icon.png`. Removing them breaks the PWA install, and nothing on screen shows it.** |
+| `/v3/` | **the app.** Brand A (`Habit Tracker` · `HT`), capacity score, small default view, cue field, KPI band **dark** until GOAL MATH locks. SW cache `ht-v9`. |
+
+The legacy source is archived at `..\_archive\2026-08-31_standard_legacy_app\` (DEC-037 — archived,
+never deleted). **HT-MIGRATE-1** renames this repo to `ht` and moves the app to the root; until
+then `/standard/v3/` is the live URL.
 
 `STANDARD_LIVE_STATE.md` (Birds Eye View Project) is the state doc — DEC-064: state docs are NOT
 mirrored into this repo. Cite it by name; never copy it here.

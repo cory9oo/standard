@@ -1319,10 +1319,13 @@ function capState(){
   var b=capBands();
   /* half-fed input can never carry a prescription, however many days are on file:
      a capacity score computed from completion alone is adherence wearing a uniform. */
-  var calibrated = (rated>=CAP_GATE.ratedDays && logged>=CAP_GATE.loggedDays && !!b && !!raw && !raw.half);
+  var fed = capFed();
+  var calibrated = (rated>=CAP_GATE.ratedDays && logged>=CAP_GATE.loggedDays && !!b && !!raw
+                    && !raw.half && fed>=4);
   var band=null;
   if(raw && b) band = raw.v < b.p33 ? 'SHED LOAD' : (raw.v > b.p66 ? 'TAKE IT ON' : 'HOLD');
   return { raw:raw, bands:b, band:band, calibrated:calibrated, rated:rated, logged:logged,
+           fed: fed,
            score: raw? Math.round(raw.v*100) : null,
            needRated: Math.max(0, CAP_GATE.ratedDays-rated),
            needLogged: Math.max(0, CAP_GATE.loggedDays-logged) };
@@ -1344,9 +1347,16 @@ function paintCapacity(){
       (c.needRated&&c.needLogged?' and ':'')+
       (c.needLogged?(c.needLogged+' more logged day'+(c.needLogged>1?'s':'')):'')+
       ' before it may prescribe';
-  var sub = c.raw.half
+  /* SAY THE SAMPLE SIZE. A bare number off one logged day reads as a verdict on the man
+     rather than on the day. */
+  var sub = (c.raw.half
     ? 'Half-fed: this is completion only. The rating half of the formula is empty.'
-    : 'Completion and self-rating, 7-day, weighted half and half.';
+    : 'Completion and self-rating, 7-day, weighted half and half.')
+    + ' Built from ' + c.fed + ' of the last 7 days.'
+    + (c.fed<=2 ? ' That is a thin week — this number is about the logging, not about you.' : '');
+  if(!c.calibrated && c.fed<4 && c.needRated===0 && c.needLogged===0){
+    wordy = 'UNCALIBRATED · only '+c.fed+' of the last 7 days logged — it will not prescribe off a thin window';
+  }
   n.innerHTML='<div class="capc'+(c.calibrated?' ok':'')+'">'+
     '<div class="capn num">'+c.score+'</div>'+
     '<div class="capw">'+wordy+'</div>'+
