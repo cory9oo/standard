@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>STANDARD</title>
+<title>Habit Tracker</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <!-- This page owns its colours. Dark Reader honours this lock and steps aside. -->
 <meta name="darkreader-lock">
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#F4F3EF">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="STANDARD">
+<meta name="apple-mobile-web-app-title" content="HT">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -26,10 +26,11 @@
   <!-- ======================= MASTHEAD ======================= -->
   <header class="mast">
     <div class="r1">
-      <span class="wm">Standard<b>.</b></span>
+      <span class="wm">HT<b>.</b></span>
       <span class="sub" id="mDate"></span>
       <span class="sp"></span>
       <span class="swatches" id="skins"></span>
+      <button class="tbtn" id="bView">Full sheet</button>
       <button class="tbtn" id="bGuide" title="What everything means">?</button>
       <button class="tbtn" id="bSet">Settings</button>
     </div>
@@ -80,6 +81,18 @@
             <button class="btn pri" id="bClose" style="flex:1">Close the day</button>
           </div>
         </div>
+
+        <!-- ---- CAPACITY + NEXT MOVE (small view lives here) ---- -->
+        <div class="blk" id="deck">
+          <div class="sh"><h2>Capacity</h2><span class="ln"></span><span class="c">can I take this on</span></div>
+          <div class="pan">
+            <div id="cap"></div>
+            <div id="capNext"></div>
+          </div>
+        </div>
+
+        <!-- ---- LEAD MEASURES (dark until GOAL MATH locks) ---- -->
+        <div class="blk" id="kpi" style="display:none"></div>
 
         <!-- ---- 2. RATING ---- -->
         <div class="blk">

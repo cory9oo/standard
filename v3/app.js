@@ -1,5 +1,5 @@
 /* ==========================================================================
-   STANDARD — a ledger of the self.
+   Habit Tracker — a ledger of the self.
    One sealed closure. Nothing reaches global scope but ST.
    ========================================================================== */
 (function () {
@@ -18,11 +18,14 @@ var WD2   = ['S','M','T','W','T','F','S'];
 var MO    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var GRADE = [[97,'A+',5],[90,'A',4],[80,'B',3],[70,'C',2],[60,'D',1],[0,'F',0]];
 var SKINS = ['statement','carbon','terminal','blueprint'];
+/* KPI BAND config — lead measures are DERIVED from GOAL MATH (x32), never hand-picked,
+   and HELD by R35.7 until GOAL_MATH.md locks. Ships dark; hard-codes no trio. */
+var HT_KPI = { enabled:false, source:'GOAL_MATH.md — not yet locked', measures:[] };
 
 var S = {
   me:null, priv0:null, habits:[], days:[], byDate:{},
   date:null, priv:null, privAll:{},
-  sort:'order', grp:'all', find:'', removed:[], circle:null,
+  sort:'order', grp:'all', find:'', removed:[], circle:null, hasCue:true, view:null,
   calYM:null, calMode:'pct'
 };
 
@@ -130,8 +133,16 @@ async function load(){
   S.me.id = uid; S.me.email = u.email;
   S.priv0 = pp.data || {};
 
-  var h = await sb.from('habits').select('id,name,group_name,cadence,tier,minutes,link,sort_order')
+  /* `cue` may not exist yet (its migration is Cory's to run). Probe, then degrade —
+     the same build must work before and after the column lands. */
+  var HCOLS='id,name,group_name,cadence,tier,minutes,link,sort_order';
+  var h = await sb.from('habits').select(HCOLS+',cue')
     .eq('user_id',uid).eq('active',true).order('sort_order');
+  if(h.error){
+    S.hasCue=false;
+    h = await sb.from('habits').select(HCOLS)
+      .eq('user_id',uid).eq('active',true).order('sort_order');
+  } else { S.hasCue=true; }
   S.habits = (h.data||[]).map(function(x,i){ if(x.sort_order==null) x.sort_order=i; return x; });
 
   var d = await sb.from('days').select('date,checked,active_set,pct,floor_pct').eq('user_id',uid).order('date');
@@ -269,7 +280,8 @@ function paintLog(){
     var ad = adherence30(h.id);
     return '<button class="li'+(on?' on':'')+(h.id===nx?' nx':'')+'" data-h="'+h.id+'">'+
       '<span class="bx"></span>'+
-      '<span class="nm">'+esc(label(h.name))+'</span>'+
+      '<span class="nm">'+esc(label(h.name))+
+        ((S.hasCue && h.cue)?'<i class="cue">'+esc(h.cue)+'</i>':'')+'</span>'+
       (h.link?'<span class="lk"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7L11.5 5"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7L12 19"/></svg></span>':'')+
       (h.cadence==='weekly'?'<span class="wk">WEEKLY</span>':'')+
       '<span class="mn">'+(h.minutes?h.minutes+'m':'—')+'</span>'+
@@ -483,10 +495,8 @@ function paintJournal(){
   el('jArcC').textContent = ks.length+' entr'+(ks.length===1?'y':'ies');
 }
 function paintNextMove(){
-  var a=stats().filter(function(s){ return s.pct!=null && s.h.cadence!=='weekly'; });
+  var a=nextMoveRank();
   if(!a.length){ el('nextMove').innerHTML='<div class="empty">Log a few days first.</div>'; return; }
-  a.forEach(function(s){ s.lev=(100-s.pct)/((s.mins||0)+10); });
-  a.sort(function(x,y){ return y.lev-x.lev; });
   var b=a[0], n=daily().length;
   var gain=Math.round(100/n);
   var tight = b.pct>=70;
@@ -840,11 +850,20 @@ function openSettings(){
   var GROUPS=['Morning','Afternoon','Night','Standards','Weekly','Other'];
   var rows=S.habits.slice().sort(function(a,b){return (a.sort_order||0)-(b.sort_order||0);});
   S.edSrc=rows;
+  var WEAK10=(function(){
+    var m={}, a=stats().filter(function(s){ return s.h.cadence!=='weekly'; });
+    a.sort(function(x,y){ return (x.pct==null?101:x.pct)-(y.pct==null?101:y.pct); });
+    a.slice(0,10).forEach(function(s){ m[s.h.id]=1; });
+    return m;
+  })();
   function edRow(h,i){
     return '<div class="ed" data-i="'+i+'">'+
       '<button class="hnd" data-up="'+i+'" title="move up">↑</button>'+
       '<input class="en" value="'+esc(h.name)+'" placeholder="standard">'+
       '<input class="em num" type="number" min="0" step="5" value="'+(h.minutes||0)+'" title="minutes">'+
+      (S.hasCue?('<input class="eq" value="'+esc(h.cue||'')+'" placeholder="'+
+        (WEAK10[h.id]?'⚑ after I ___, I will ___':'after I ___, I will ___')+
+        '" title="Cue — the event this standard hangs off. Ten weakest are flagged.">'):'')+
       '<select class="eg">'+GROUPS.map(function(g){
         return '<option'+(g===(h.group_name||'Other')?' selected':'')+'>'+g+'</option>'; }).join('')+'</select>'+
       '<select class="ec"><option value="daily"'+(h.cadence!=='weekly'?' selected':'')+'>Daily</option>'+
@@ -914,9 +933,16 @@ function openSettings(){
       toast(n?('stripped '+n+' — now save'):'nothing to strip');
     };
     el('pSave').onclick=saveProfile;
-    el('xCsv').onclick=function(){ dl('standard-days.csv', csvDays()); };
-    el('xCsvH').onclick=function(){ dl('standard-standards.csv', csvHabits()); };
-    el('xJson').onclick=function(){ dl('standard.json', JSON.stringify({profile:S.me,habits:S.habits,days:S.days},null,2)); };
+    el('xCsv').onclick=function(){ dl('ht-days.csv', csvDays()); };
+    el('xCsvH').onclick=function(){ dl('ht-standards.csv', csvHabits()); };
+    el('xJson').onclick=function(){
+      /* R35.6 — day_private carries inputs 2 and 3. Exporting completion alone and calling it
+         EVERYTHING is how a backup becomes a belief. */
+      var priv=[]; for(var k in S.privAll){ if(S.privAll[k]) priv.push(S.privAll[k]); }
+      priv.sort(function(a,b){ return a.date<b.date?-1:1; });
+      dl('ht.json', JSON.stringify({ profile:S.me, habits:S.habits, days:S.days,
+        day_private:priv, exported_at:new Date().toISOString(), schema:'ht-export-2' },null,2));
+    };
     el('xPrint').onclick=function(){ closeOv(); setTimeout(function(){ window.print(); },260); };
     el('bOut').onclick=async function(){ await sb.auth.signOut(); location.reload(); };
     Array.prototype.forEach.call(document.querySelectorAll('[data-skin2]'),function(b){
@@ -963,6 +989,7 @@ async function saveStandards(){
       group_name:r.querySelector('.eg').value,
       cadence:r.querySelector('.ec').value,
       sort_order:order++ };
+    if(S.hasCue){ var qn=r.querySelector('.eq'); rec.cue = qn ? qn.value.trim() : ''; }
     if(r.classList.contains('gone')){
       if(id) ops.push(sb.from('habits').update({active:false,archived_at:new Date().toISOString()}).eq('id',id.id));
       continue;
@@ -1035,11 +1062,11 @@ function openCircle(){
 /* ---- exports ---- */
 function csvDays(){
   var ids=S.habits.map(function(h){return h.id;});
-  var head=['date','pct','grade'].concat(S.habits.map(function(h){return '"'+label(h.name).replace(/"/g,'""')+'"';}));
+  var head=['date','pct','grade','rating'].concat(S.habits.map(function(h){return '"'+label(h.name).replace(/"/g,'""')+'"';}));
   var out=[head.join(',')];
   dates().forEach(function(k){
     var r=S.byDate[k], ck=r.checked||{};
-    out.push([k, r.pct==null?'':r.pct, r.pct==null?'':grade(r.pct)[0]]
+    out.push([k, r.pct==null?'':r.pct, r.pct==null?'':grade(r.pct)[0], (ratingOf(k)==null?'':ratingOf(k))]
       .concat(ids.map(function(i){return ck[i]?1:0;})).join(','));
   });
   return out.join('\n');
@@ -1063,7 +1090,7 @@ function dl(name,text){
 function authScreen(){
   document.querySelector('.app').innerHTML=
     '<div style="max-width:340px;margin:16vh auto 0;padding:0 4px">'+
-    '<div class="wm" style="font-size:15px">Standard<b>.</b></div>'+
+    '<div class="wm" style="font-size:15px">HT<b>.</b></div>'+
     '<div class="note" style="padding:10px 0 22px">A ledger of the self. One number a day, and nowhere to hide.</div>'+
     '<label class="fld"><span class="lab">Email</span><input id="aEmail" type="email" autocomplete="email"></label>'+
     '<label class="fld"><span class="lab">Password</span><input id="aPass" type="password" autocomplete="current-password"></label>'+
@@ -1089,6 +1116,7 @@ function authScreen(){
 /* ============================ paint all ============================ */
 function paintAll(){
   paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs();
+  paintCapacity(); paintNextSmall(); paintKpi();
   paintRight(); paintCircle();
 }
 
@@ -1098,6 +1126,7 @@ function goDay(k){
   S.priv=S.privAll[k]||null;
   var d=dnum(k); S.calYM=[d.getFullYear(),d.getMonth()];
   paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs(); paintSankey(); paintCal();
+  paintCapacity(); paintNextSmall();
   var t=el('jIn'); if(t && window.innerWidth<1080) window.scrollTo({top:Math.max(0,t.offsetTop-70),behavior:'smooth'});
 }
 
@@ -1107,6 +1136,8 @@ function wire(){
     var b=e.target.closest('[data-skin]'); if(b) skin(b.getAttribute('data-skin'));
   });
   el('bSet').onclick=openSettings;
+  var bv=el('bView'); if(bv) bv.onclick=toggleView;
+  applyView(loadView());
   el('bGuide').onclick=openGuide;
   el('bCircle').onclick=openCircle;
 
@@ -1226,6 +1257,152 @@ function wire(){
     Array.prototype.forEach.call(el('jump').children,function(c){
       c.classList.toggle('on', c.getAttribute('data-j')===cur); });
   },{passive:true});
+}
+
+
+/* ==================================================================
+   CAPACITY · SMALL VIEW · CUE · KPI BAND
+   HT charter §1–§4, ruled by Cory 2026-08-31 (SPEC_QUEUE R35.7).
+   Appended by _reconcile/ht_batch3/build_v3.py — one block, one place.
+   ================================================================== */
+
+/* ---- CAPACITY SCORE -------------------------------------------------
+   Banded against CORY'S OWN trailing distribution, never population norms.
+   Bands recompute WEEKLY (anchored to the last Sunday), never per-day: a
+   single bad day must not flip a prescription. Until the calibration gate
+   passes the band renders WITHOUT a prescription — a prescription from four
+   datapoints is a guess wearing a uniform. */
+var CAP_GATE = { ratedDays:14, loggedDays:30 };
+
+function capFed(k){                       /* REAL logged days inside the 7-day window */
+  /* load() puts a synthetic empty row in byDate for today so the sheet can render, and that row
+     is NOT in S.days. Counting byDate would therefore call an unfed week "fed" every time —
+     identity against S.days is what separates a persisted day from the placeholder. */
+  var end=k||today(), n=0;
+  for(var i=0;i<7;i++){
+    var r=S.byDate[shift(end,-i)];
+    if(r && S.days.indexOf(r)>=0) n++;
+  }
+  return n;
+}
+function capRaw(k){
+  /* A GAP IS NOT A ZERO. With nothing logged in the window, adherence reads 0% and the score
+     would say SHED LOAD — the exact wrong instruction for someone who simply stopped logging.
+     Unfed returns null and the card says so. */
+  if(capFed(k)===0) return null;
+  var adh = rolling(7,k);                 /* 0..100 or null */
+  var rat = rollRate(7,k);                /* 1..10  or null */
+  if(adh==null && rat==null) return null;
+  if(rat==null) return { v: adh/100, half:true };
+  if(adh==null) return { v: (rat-1)/9,  half:true };
+  return { v: 0.5*(adh/100) + 0.5*((rat-1)/9), half:false };
+}
+function capWeekAnchor(){
+  var d=dnum(today()); d.setDate(d.getDate()-d.getDay());   /* last Sunday */
+  return dk(d);
+}
+function capBands(){
+  var anchor=capWeekAnchor(), vals=[];
+  for(var i=0;i<60;i++){
+    var k=shift(anchor,-i), r=S.byDate[k]?capRaw(k):null;
+    if(r) vals.push(r.v);
+  }
+  if(vals.length<8) return null;
+  vals.sort(function(a,b){return a-b;});
+  var q=function(p){ return vals[clamp(Math.floor(p*(vals.length-1)),0,vals.length-1)]; };
+  return { p33:q(0.33), p66:q(0.66), n:vals.length, anchor:anchor };
+}
+function capState(){
+  var rated=0, logged=dates().length;
+  for(var k in S.privAll){ if(ratingOf(k)!=null) rated++; }
+  var raw=capRaw(today());
+  var b=capBands();
+  /* half-fed input can never carry a prescription, however many days are on file:
+     a capacity score computed from completion alone is adherence wearing a uniform. */
+  var calibrated = (rated>=CAP_GATE.ratedDays && logged>=CAP_GATE.loggedDays && !!b && !!raw && !raw.half);
+  var band=null;
+  if(raw && b) band = raw.v < b.p33 ? 'SHED LOAD' : (raw.v > b.p66 ? 'TAKE IT ON' : 'HOLD');
+  return { raw:raw, bands:b, band:band, calibrated:calibrated, rated:rated, logged:logged,
+           score: raw? Math.round(raw.v*100) : null,
+           needRated: Math.max(0, CAP_GATE.ratedDays-rated),
+           needLogged: Math.max(0, CAP_GATE.loggedDays-logged) };
+}
+function paintCapacity(){
+  var n=el('cap'); if(!n) return;
+  var c=capState();
+  if(c.score==null){
+    var gap=(c.logged>0 && capFed()===0);
+    n.innerHTML='<div class="capc"><div class="capn">—</div><div class="capw">'+
+      (gap?'UNFED · nothing logged in 7 days':'Capacity needs a logged day')+'</div>'+
+      '<div class="caps">'+(gap
+        ? 'A gap is not a zero, so this shows nothing rather than telling you to shed load. Tick today and it comes back.'
+        : 'Tick something above and this fills in.')+'</div></div>'; return;
+  }
+  var wordy = c.calibrated
+    ? '<b>'+c.band+'</b> · banded against your own last '+c.bands.n+' days'
+    : 'UNCALIBRATED · '+(c.needRated?('needs '+c.needRated+' more rated day'+(c.needRated>1?'s':'')):'')+
+      (c.needRated&&c.needLogged?' and ':'')+
+      (c.needLogged?(c.needLogged+' more logged day'+(c.needLogged>1?'s':'')):'')+
+      ' before it may prescribe';
+  var sub = c.raw.half
+    ? 'Half-fed: this is completion only. The rating half of the formula is empty.'
+    : 'Completion and self-rating, 7-day, weighted half and half.';
+  n.innerHTML='<div class="capc'+(c.calibrated?' ok':'')+'">'+
+    '<div class="capn num">'+c.score+'</div>'+
+    '<div class="capw">'+wordy+'</div>'+
+    '<div class="caps">'+sub+'</div></div>';
+}
+
+/* ---- NEXT MOVE, shared ranking (small view + full sheet) ---- */
+function nextMoveRank(){
+  var a=stats().filter(function(s){ return s.pct!=null && s.h.cadence!=='weekly'; });
+  a.forEach(function(s){ s.lev=(100-s.pct)/((s.mins||0)+10); });
+  a.sort(function(x,y){ return y.lev-x.lev; });
+  return a;
+}
+function paintNextSmall(){
+  var n=el('capNext'); if(!n) return;
+  var a=nextMoveRank();
+  if(!a.length){ n.innerHTML='<div class="empty">Log a few days and the next move appears here.</div>'; return; }
+  var b=a[0];
+  n.innerHTML='<div class="nms"><span class="k">Next move</span>'+
+    '<span class="v">'+esc(label(b.h.name))+'</span>'+
+    '<span class="s">'+b.pct+'% over '+b.of+' days · '+(b.mins?b.mins+' min':'no time')+'</span></div>';
+}
+
+/* ---- SMALL DEFAULT VIEW ---------------------------------------------
+   Default is SMALL. 13 logged days cannot feed 18 instruments, and a wall
+   of empty charts is work at 4:50am. The wall is one tap away, never gone
+   (nothing here re-opens DEC-055). */
+function loadView(){
+  try { return localStorage.getItem('ht_view')==='full' ? 'full' : 'small'; }
+  catch(e){ return 'small'; }
+}
+function applyView(v){
+  S.view = (v==='full')?'full':'small';
+  document.body.classList.toggle('small', S.view==='small');
+  var b=el('bView'); if(b) b.textContent = (S.view==='small') ? 'Full sheet' : 'Small view';
+  try { localStorage.setItem('ht_view', S.view); } catch(e){}
+  if(S.view==='full'){ paintRight(); }
+}
+function toggleView(){ applyView(S.view==='small'?'full':'small'); }
+
+/* ---- KPI BAND — config-driven, ships DARK ---------------------------
+   x32: the business measures are DERIVED from GOAL MATH, never hand-picked,
+   and R35.7 HOLDS them until GOAL_MATH.md locks. So the band is built and
+   wired, hard-codes nothing, and renders nothing until a config arrives.
+   To light it: set enabled:true and give measures[] {name,minutes,target}. */
+function paintKpi(){
+  var n=el('kpi'); if(!n) return;
+  if(!HT_KPI.enabled || !(HT_KPI.measures||[]).length){ n.innerHTML=''; n.style.display='none'; return; }
+  n.style.display='';
+  n.innerHTML='<div class="sh"><h2>Lead measures</h2><span class="ln"></span><span class="c">'+
+    esc(HT_KPI.source||'')+'</span></div><div class="pan"><div class="kpil">'+
+    HT_KPI.measures.map(function(m){
+      return '<div class="kpim"><span class="k">'+esc(m.name)+'</span>'+
+             '<span class="v num">'+(m.target==null?'—':esc(String(m.target)))+'</span>'+
+             '<span class="s">'+(m.minutes?m.minutes+' min/day':'')+'</span></div>';
+    }).join('')+'</div></div>';
 }
 
 /* ============================ boot ============================ */

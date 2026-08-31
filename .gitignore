@@ -1,0 +1,4 @@
+# R35.5 — never commit a secret file, in any repo of the estate
+.env
+.env.*
+!.env.example

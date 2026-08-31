@@ -371,3 +371,30 @@ section{scroll-margin-top:56px}
 .nm{font-size:12.5px;line-height:1.5}
 .nm b{color:var(--accent)}
 .nm .big{font:600 18px/1.1 var(--mono);display:block;padding:2px 0 6px}
+
+
+/* ===== capacity · small view · cue · KPI band  (batch 2, R35.7) ===== */
+.capc{display:flex;flex-direction:column;gap:2px;padding:2px 0}
+.capc .capn{font-size:44px;line-height:1;letter-spacing:-.02em;color:var(--ink3)}
+.capc.ok .capn{color:var(--ink)}
+.capc .capw{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+.capc .caps{font-size:12px;color:var(--ink3);padding-top:2px}
+.nms{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--rule);margin-top:10px;padding-top:10px}
+.nms .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.nms .v{font-size:15px;color:var(--ink)}
+.nms .s{font-size:12px;color:var(--ink2)}
+.li .nm .cue{display:block;font-style:normal;font-size:11px;color:var(--ink3);padding-top:1px}
+.kpil{display:flex;flex-wrap:wrap;gap:14px}
+.kpim{display:flex;flex-direction:column;min-width:120px}
+.kpim .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.kpim .v{font-size:22px;color:var(--ink)}
+.kpim .s{font-size:11px;color:var(--ink3)}
+/* .ed is a GRID with named areas (not flex) — the cue is an extra child with no area, so it
+   must be told to span the whole row or auto-placement squeezes it into a 14px sliver. */
+.ed .eq{grid-column:1/-1;order:9;font-size:11.5px;color:var(--ink2)}
+.ed .eq::placeholder{color:var(--ink3)}
+/* SMALL VIEW — the instrument wall is one tap away, never gone */
+body.small .colR{display:none}
+body.small .jump{display:none}
+body.small .grid{grid-template-columns:1fr}
+body.small .tape .tp:nth-child(n+5){display:none}
