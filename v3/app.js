@@ -25,7 +25,7 @@ var HT_KPI = { enabled:false, source:'GOAL_MATH.md — not yet locked', measures
 var S = {
   me:null, priv0:null, habits:[], days:[], byDate:{},
   date:null, priv:null, privAll:{},
-  sort:'order', grp:'all', find:'', removed:[], circle:null, hasCue:true, view:null,
+  sort:'order', grp:'all', find:'', removed:[], circle:null, hasCue:true, view:null, yearY:null,
   calYM:null, calMode:'pct'
 };
 
@@ -213,7 +213,10 @@ function paintMast(){
     tp('7-day',  (r7==null?'—':r7+'%')+'<s>'+(r7==null?'':grade(r7)[0])+'</s>') +
     tp('30-day', (r30==null?'—':r30+'%')) +
     tp('90-day', (r90==null?'—':r90+'%')) +
-    tp('Streak', st+'<s>d ≥80%</s>') +
+    tp('Consistency', (function(){ var c=consistency(90);
+        return c.pct+'%<s>'+c.hit+' of 90 d at 80%+</s>'; })()) +
+    tp('Streak', (function(){ var f=streakForgiving();
+        return f.days+'<s>d'+(f.frozen?(' · '+f.frozen+' of '+f.budget+' frozen'):' ≥80%')+'</s>'; })()) +
     tp('Weekly', wkDone+'<s>of '+wk.length+'</s>') +
     tp('Rating', (function(){ var r=rollRate(7); return (r==null?'—':r)+'<s>7d avg</s>'; })()) +
     tp('Logged', dates().length+'<s>days</s>');
@@ -282,6 +285,8 @@ function paintLog(){
       '<span class="bx"></span>'+
       '<span class="nm">'+esc(label(h.name))+
         ((S.hasCue && h.cue)?'<i class="cue">'+esc(h.cue)+'</i>':'')+'</span>'+
+      (function(){ var mr=missRun(h.id); return mr>=3?'<span class="mrun" title="'+mr+
+        ' days running">⚑'+mr+'</span>':''; })()+
       (h.link?'<span class="lk"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7L11.5 5"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7L12 19"/></svg></span>':'')+
       (h.cadence==='weekly'?'<span class="wk">WEEKLY</span>':'')+
       '<span class="mn">'+(h.minutes?h.minutes+'m':'—')+'</span>'+
@@ -850,12 +855,8 @@ function openSettings(){
   var GROUPS=['Morning','Afternoon','Night','Standards','Weekly','Other'];
   var rows=S.habits.slice().sort(function(a,b){return (a.sort_order||0)-(b.sort_order||0);});
   S.edSrc=rows;
-  var WEAK10=(function(){
-    var m={}, a=stats().filter(function(s){ return s.h.cadence!=='weekly'; });
-    a.sort(function(x,y){ return (x.pct==null?101:x.pct)-(y.pct==null?101:y.pct); });
-    a.slice(0,10).forEach(function(s){ m[s.h.id]=1; });
-    return m;
-  })();
+  /* R46.5: cue coverage extends to EVERY below-median standard, not the worst ten. */
+  var WEAK10=belowMedian();
   function edRow(h,i){
     return '<div class="ed" data-i="'+i+'">'+
       '<button class="hnd" data-up="'+i+'" title="move up">↑</button>'+
@@ -872,6 +873,9 @@ function openSettings(){
   }
   var body=
     '<div class="sh"><h2>The standards</h2><span class="ln"></span><span class="c">'+rows.length+' · edit anything</span></div>'+
+    (S.hasCue?(function(){ var c=cueCoverage(); return '<div class="cuecov">Cues written: <b>'+c.got+
+      '</b> of <b>'+c.need+'</b> below-median standards'+(c.got<c.need?' — the flagged rows are where a cue is worth writing.':' — covered.')+
+      '</div>'; })():'')+
     '<div class="bud" id="bud"></div>'+
     '<div class="tools" style="padding:0 0 8px">'+
       '<button class="btn" id="edAdd">+ Add</button>'+
@@ -1117,6 +1121,7 @@ function authScreen(){
 function paintAll(){
   paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs();
   paintCapacity(); paintNextSmall(); paintKpi();
+  paintStarter(); paintWeekly(); paintMcII(); paintYear();
   paintRight(); paintCircle();
 }
 
@@ -1126,7 +1131,7 @@ function goDay(k){
   S.priv=S.privAll[k]||null;
   var d=dnum(k); S.calYM=[d.getFullYear(),d.getMonth()];
   paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs(); paintSankey(); paintCal();
-  paintCapacity(); paintNextSmall();
+  paintCapacity(); paintNextSmall(); paintWeekly(); paintYear();
   var t=el('jIn'); if(t && window.innerWidth<1080) window.scrollTo({top:Math.max(0,t.offsetTop-70),behavior:'smooth'});
 }
 
@@ -1137,6 +1142,10 @@ function wire(){
   });
   el('bSet').onclick=openSettings;
   var bv=el('bView'); if(bv) bv.onclick=toggleView;
+  var yp=el('yPrev'), yn=el('yNext');
+  if(yp) yp.onclick=function(){ S.yearY=(S.yearY==null?dnum(today()).getFullYear():S.yearY)-1; paintYear(); };
+  if(yn) yn.onclick=function(){ S.yearY=(S.yearY==null?dnum(today()).getFullYear():S.yearY)+1; paintYear(); };
+  document.body.classList.toggle('reviewday', [0,1].indexOf(dnum(today()).getDay())>=0);
   applyView(loadView());
   el('bGuide').onclick=openGuide;
   el('bCircle').onclick=openCircle;
@@ -1413,6 +1422,222 @@ function paintKpi(){
              '<span class="v num">'+(m.target==null?'—':esc(String(m.target)))+'</span>'+
              '<span class="s">'+(m.minutes?m.minutes+' min/day':'')+'</span></div>';
     }).join('')+'</div></div>';
+}
+
+
+/* ==================================================================
+   HT-5 — streak repair · MCII · weekly review · forfeit (dark) ·
+   year view · cue coverage · miss flags · 90-day consistency ·
+   60-second onboarding.
+   R46.5 pile-in, additive only. NO fourth daily input (R47.1/DEC-058):
+   every surface below is derived output or a one-off config write.
+   ================================================================== */
+
+/* ---- FORFEIT REFEREE — built, config-driven, DARK until Phase D ----
+   The self-refereed commitment device never fired (the $250/11-texts).
+   PENDING-SPEC-15 §10: the escalation must be STRUCTURAL, not discretionary.
+   So the referee is a config with a trigger the machine evaluates — and it
+   ships disabled, like the KPI band, until Phase D lets anything fire. */
+var HT_FORFEIT = { enabled:false, referee:null, stake:null,
+                   trigger:{ missRun:3, weeklyBelow:null }, note:'dark until Phase D (DEC-068)' };
+
+/* ---- STREAK REPAIR -------------------------------------------------
+   Bounded freeze budget + isolated-miss forgiveness. Derived from the
+   existing rows — no column, no new input. A streak that a single missed
+   day destroys is a loss-aversion device sitting at zero; it punishes the
+   record-keeping, not the man. */
+var STREAK = { freezePer30:2, formedAt:66 };   /* 66 = the median automaticity figure */
+
+function loggedOn(k){ var r=S.byDate[k]; return !!(r && S.days.indexOf(r)>=0); }
+function streakForgiving(){
+  /* walks back from today; an unlogged or sub-80 day spends a freeze instead of
+     ending the run, up to freezePer30 inside any trailing 30 days. */
+  var k=today(), n=0, spent=[], guard=0;
+  if(!loggedOn(k)) k=shift(k,-1);
+  while(guard++<400){
+    var r=S.byDate[k], pct=(r&&r.pct!=null)?r.pct:null;
+    if(pct!=null && pct>=80){ n++; }
+    else {
+      /* the budget must be bounded by the RUN, not by a window that slides away underneath it:
+         a per-30-days test evaluated at each step lets old freezes expire and the streak runs
+         forever (rehearsal exhibit: 21 freezes spent against a budget of 2). Allowance grows one
+         block at a time as the run itself grows. */
+      var allowed = STREAK.freezePer30 * (1 + Math.floor(n/30));
+      if(spent.length >= allowed) break;
+      spent.push(k);
+      n++;                                   /* the day is carried, not counted as a win */
+    }
+    k=shift(k,-1);
+  }
+  return { days:n, frozen:spent.length, budget:STREAK.freezePer30 };
+}
+function missRun(hid){                        /* consecutive missed days, ending today */
+  var k=today(), n=0, guard=0, h=null;
+  for(var i=0;i<S.habits.length;i++) if(S.habits[i].id===hid) h=S.habits[i];
+  if(!h || h.cadence==='weekly') return 0;
+  while(guard++<120){
+    if(!loggedOn(k)){ k=shift(k,-1); continue; }
+    if(doneOn(h,k)) break;
+    n++; k=shift(k,-1);
+  }
+  return n;
+}
+function automaticity(hid){                   /* PENDING-SPEC-15: formation is a count, not a feeling */
+  var done=0, first=null;
+  dates().forEach(function(k){ if(ckOf(k)[hid]){ done++; if(!first) first=k; } });
+  return { done:done, first:first, formed:done>=STREAK.formedAt,
+           pct:Math.min(100, Math.round(done/STREAK.formedAt*100)) };
+}
+
+/* ---- 90-DAY CONSISTENCY --------------------------------------------
+   PENDING-SPEC-15 §2: rank and frame on CONSISTENCY over 90 days —
+   frequency of completion — never on intensity or on the day-rating.
+   Denominator is calendar days, so silence counts. That is the point. */
+function consistency(n){
+  var end=today(), hit=0, logged=0;
+  for(var i=0;i<n;i++){
+    var k=shift(end,-i), r=S.byDate[k];
+    if(r && r.pct!=null && loggedOn(k)){ logged++; if(r.pct>=80) hit++; }
+  }
+  return { hit:hit, logged:logged, of:n, pct:Math.round(hit/n*100) };
+}
+
+/* ---- WEEKLY REVIEW — the Monday-seven feed ------------------------- */
+function weekWindow(off){
+  var d=dnum(today()); d.setDate(d.getDate()-d.getDay()-7*(off||0));
+  var start=dk(d), a=[];
+  for(var i=0;i<7;i++) a.push(shift(start,i));
+  return a;
+}
+function weekStats(off){
+  var ks=weekWindow(off), pcts=[], rats=[], jr=0, lg=0;
+  ks.forEach(function(k){
+    if(k>today()) return;
+    var r=S.byDate[k];
+    if(r && r.pct!=null && loggedOn(k)){ pcts.push(r.pct); lg++; }
+    var v=ratingOf(k); if(v!=null) rats.push(v);
+    var p=S.privAll[k]; if(p && (p.why||p.tasks||p.prayer)) jr++;
+  });
+  var avg=function(a){ return a.length? Math.round(a.reduce(function(x,y){return x+y;},0)/a.length*10)/10 : null; };
+  return { logged:lg, adh:pcts.length?Math.round(avg(pcts)):null, rating:avg(rats), journal:jr, days:ks };
+}
+function paintWeekly(){
+  var n=el('weekly'); if(!n) return;
+  var a=weekStats(0), b=weekStats(1), c90=consistency(90);
+  var flags=S.habits.filter(function(h){ return missRun(h.id)>=3; })
+                    .map(function(h){ return { h:h, run:missRun(h.id) }; })
+                    .sort(function(x,y){ return y.run-x.run; });
+  var st=stats().filter(function(s){ return s.pct!=null && s.h.cadence!=='weekly'; })
+                .sort(function(x,y){ return x.pct-y.pct; });
+  var d=function(now,prev,suf){
+    if(now==null) return '—';
+    if(prev==null) return now+(suf||'');
+    var v=Math.round((now-prev)*10)/10;
+    return now+(suf||'')+' <s>'+(v>0?'+':'')+v+' vs last week</s>';
+  };
+  n.innerHTML=
+    '<div class="wkrow">'+
+      tp('Logged', a.logged+'<s>of 7</s>')+
+      tp('Adherence', d(a.adh,b.adh,'%'))+
+      tp('Rating', d(a.rating,b.rating,''))+
+      tp('Journal', a.journal+'<s>of 7 days</s>')+
+      tp('90-day consistency', c90.pct+'%<s>'+c90.hit+' days at 80%+</s>')+
+    '</div>'+
+    (flags.length
+      ? '<div class="flags"><span class="k">Off track — 3+ days running</span>'+
+        flags.slice(0,6).map(function(f){
+          return '<div class="fl"><span>'+esc(label(f.h.name))+'</span><b>'+f.run+' days</b></div>'; }).join('')+
+        '<div class="s">Three consecutive misses is a structural flag, not a judgement — the standard '+
+        'is either wrong, mis-cued, or genuinely dropped. Decide which at review.</div></div>'
+      : '<div class="flags"><span class="k">Off track — 3+ days running</span>'+
+        '<div class="s">Nothing is three days down. </div></div>')+
+    '<div class="wk2"><div><span class="k">Weakest</span>'+
+      st.slice(0,3).map(function(s){ return '<div class="fl"><span>'+esc(label(s.h.name))+'</span><b>'+s.pct+'%</b></div>'; }).join('')+
+    '</div><div><span class="k">Strongest</span>'+
+      st.slice(-3).reverse().map(function(s){ return '<div class="fl"><span>'+esc(label(s.h.name))+'</span><b>'+s.pct+'%</b></div>'; }).join('')+
+    '</div></div>';
+}
+
+/* ---- MCII — rides the existing journal `why`, once a week ----------
+   Implementation intentions with the obstacle named. It is a PROMPT on an
+   existing field on one day a week, never a new field: DEC-058 holds. */
+function isMcIIDay(){ return dnum(today()).getDay()===0; }   /* Sunday: set the week */
+function paintMcII(){
+  var n=el('mcii'); if(!n) return;
+  if(!isMcIIDay()){ n.style.display='none'; n.innerHTML=''; return; }
+  n.style.display='';
+  n.innerHTML='<div class="mc"><span class="k">Sunday — set the week</span>'+
+    '<div class="s">In the box below: <b>what do you want this week</b>, then <b>the obstacle</b> '+
+    'that will actually get in the way, then <b>when-then</b> — "when &lt;obstacle&gt; happens, I will &lt;action&gt;". '+
+    'Wanting it and naming what blocks it beats wanting it alone.</div></div>';
+  var w=el('iWhy'); if(w && !w.value) w.placeholder='I want… · What gets in the way… · When that happens, I will…';
+}
+
+/* ---- YEAR VIEW ---------------------------------------------------- */
+function paintYear(){
+  var n=el('yearGrid'); if(!n) return;
+  var y=(S.yearY==null? dnum(today()).getFullYear() : S.yearY);
+  var lab=el('yearLab'); if(lab) lab.textContent=y;
+  var cells='', start=new Date(y,0,1), end=new Date(y,11,31);
+  var pad=start.getDay();
+  for(var i=0;i<pad;i++) cells+='<i class="yc pad"></i>';
+  for(var d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    var k=dk(d), r=S.byDate[k], p=(r&&r.pct!=null&&loggedOn(k))?r.pct:null;
+    cells+='<i class="yc" title="'+k+(p==null?' · no entry':' · '+p+'%')+'" style="background:'+
+      (p==null?'var(--sunk)':dens(p))+'"></i>';
+  }
+  n.innerHTML=cells;
+  var c=el('yearC');
+  if(c){
+    var got=dates().filter(function(k){ return k.slice(0,4)===String(y); }).length;
+    c.textContent=got+' days logged in '+y;
+  }
+}
+
+/* ---- CUE COVERAGE — every below-median standard --------------------- */
+function belowMedian(){
+  var a=stats().filter(function(s){ return s.h.cadence!=='weekly'; });
+  var v=a.map(function(s){ return s.pct==null?0:s.pct; }).sort(function(x,y){ return x-y; });
+  if(!v.length) return {};
+  var med=v[Math.floor(v.length/2)], m={};
+  a.forEach(function(s){ if((s.pct==null?0:s.pct)<=med) m[s.h.id]=1; });
+  return m;
+}
+function cueCoverage(){
+  var need=belowMedian(), n=0, got=0;
+  S.habits.forEach(function(h){ if(need[h.id]){ n++; if(h.cue) got++; } });
+  return { need:n, got:got };
+}
+
+/* ---- 60-SECOND ONBOARDING — defaults, one action, no tour ----------
+   PENDING-SPEC-15 §7/§8: first value inside 60 seconds; an empty state must
+   state status, teach in place, and offer one direct path to populate.
+   A stranger ticks a real standard within seconds of arriving. */
+var STARTER = [
+  { name:'Move for 20 minutes', minutes:20, group_name:'Morning', cadence:'daily' },
+  { name:'Read 10 pages',        minutes:15, group_name:'Other',   cadence:'daily' },
+  { name:'Lights out by 10:30',  minutes:0,  group_name:'Night',   cadence:'daily' }
+];
+function paintStarter(){
+  var n=el('starter'); if(!n) return;
+  if(S.habits.length){ n.style.display='none'; n.innerHTML=''; return; }
+  n.style.display='';
+  n.innerHTML='<div class="st1"><span class="k">Start here</span>'+
+    '<div class="s">Three standards to begin with. Tick one tonight and you have used this properly. '+
+    'Change them, delete them, add your own — later, in Settings.</div>'+
+    STARTER.map(function(s){ return '<div class="fl"><span>'+esc(s.name)+'</span><b>'+
+      (s.minutes?s.minutes+'m':'—')+'</b></div>'; }).join('')+
+    '<div class="tools" style="padding-top:10px"><button class="btn pri" id="stGo">Start with these three</button></div></div>';
+  var b=el('stGo');
+  if(b) b.onclick=async function(){
+    b.disabled=true; b.textContent='adding…';
+    var ops=STARTER.map(function(s,i){
+      return sb.from('habits').insert({ user_id:S.me.id, name:s.name, minutes:s.minutes,
+        group_name:s.group_name, cadence:s.cadence, sort_order:i });
+    });
+    await Promise.all(ops);
+    await load(); paintAll(); toast('three standards added — tick one');
+  };
 }
 
 /* ============================ boot ============================ */

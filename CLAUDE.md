@@ -64,10 +64,31 @@ later list change. Do not remove that write.
 
 ## DEPLOY
 
-Container→GitHub push is unavailable for this repo. Route is Composio, one commit:
+**Two surfaces, two truths — say which one you are (R46.1).**
+
+- **This clone, on the laptop, natively: `git push` WORKS.** HT-2, HT-3 and HT-4 all pushed here,
+  rc=0. It is the writer (DEC-042) and the normal route.
+- **The cloud container cannot push this repo.** `GITHUB_TOKEN` is present and `api.github.com`
+  answers 200, but repo access is not enabled for that session and no `add_repo` tool exists. From
+  there — and only from there — the route is Composio, one commit:
 blob × n → tree (with `base_tree`) → commit → update-ref, then poll live `app.js` md5 until it
 matches. Full procedure in `STANDARD_LIVE_STATE.md` § DEPLOY PROCEDURE. Substitute `__URL__` /
 `__KEY__` inside the sandbox so the Supabase key never enters a context window.
+
+## PRIVACY — R47.3, and it is structural, not a setting
+
+A circle sees **adherence-class data only**: completion %, streaks, capacity band. **Journals
+(`why` · `tasks` · `prayer`) and day-ratings are never visible to anyone but their author.** Not
+permission-gated — *unshareable*: there must be no schema path from another user's id to those
+fields. The standards LIST is not shareable either: when people know their list is watched they set
+fewer and safer standards, which cancels the whole point of the circle.
+
+Today exactly one query crosses users — `days.select('user_id,date,pct')` in `paintCircle()`. Keep
+it that way. **`_reconcile/ht_batch5/privacy_check.py` enforces this mechanically and must pass in
+every HT wire**; it fails loud on an unscoped `day_private` read, a cross-user `habits` read, or any
+cross-user column outside `{user_id,date,pct}`.
+
+CIRCLE-1 (Andrew · Dale · Justin) is **chartered, not built** — it opens on Cory's word only.
 
 ## PHASE GATE
 

@@ -82,6 +82,9 @@
           </div>
         </div>
 
+        <!-- ---- 60-SECOND START (empty account only) ---- -->
+        <div class="blk" id="starterBlk"><div id="starter"></div></div>
+
         <!-- ---- CAPACITY + NEXT MOVE (small view lives here) ---- -->
         <div class="blk" id="deck">
           <div class="sh"><h2>Capacity</h2><span class="ln"></span><span class="c">can I take this on</span></div>
@@ -89,6 +92,12 @@
             <div id="cap"></div>
             <div id="capNext"></div>
           </div>
+        </div>
+
+        <!-- ---- WEEKLY REVIEW — the Monday-seven feed ---- -->
+        <div class="blk" id="weeklyBlk">
+          <div class="sh"><h2>The week</h2><span class="ln"></span><span class="c">read it once, on the same day</span></div>
+          <div class="pan"><div id="weekly"></div></div>
         </div>
 
         <!-- ---- LEAD MEASURES (dark until GOAL MATH locks) ---- -->
@@ -109,6 +118,7 @@
         <!-- ---- 3. JOURNAL ---- -->
         <div class="blk">
           <div class="sh"><h2><i class="n">3</i>Journal</h2><span class="ln"></span><span class="c" id="jrnC">saves as you type</span></div>
+          <div id="mcii" style="display:none"></div>
           <div class="pan">
             <label class="fld"><span class="lab">Tasks completed today</span>
               <textarea id="iTasks" rows="3" placeholder="- Closed X&#10;- Called Y"></textarea></label>
@@ -194,6 +204,15 @@
       </section>
 
       <!-- ---------------- RATING ---------------- -->
+      <section id="jYear">
+        <div class="blk">
+          <div class="sh"><h2>The year</h2><span class="ln"></span>
+            <span class="c"><button class="tbtn" id="yPrev">‹</button> <b id="yearLab"></b>
+            <button class="tbtn" id="yNext">›</button> · <span id="yearC"></span></span></div>
+          <div class="pan"><div class="ygrid" id="yearGrid"></div></div>
+        </div>
+      </section>
+
       <section id="jRate">
         <div class="band">Output · how it felt</div>
 
