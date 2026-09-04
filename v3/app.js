@@ -26,6 +26,7 @@ var S = {
   me:null, priv0:null, habits:[], days:[], byDate:{},
   date:null, priv:null, privAll:{},
   sort:'order', grp:'all', find:'', removed:[], circle:null, hasCue:true, view:null, yearY:null,
+  hasPredict:true,
   calYM:null, calMode:'pct'
 };
 
@@ -153,7 +154,11 @@ async function load(){
   if(!S.calYM){ var t=dnum(today()); S.calYM=[t.getFullYear(),t.getMonth()]; }
 
   /* the whole private record — rating and journal are inputs, so they get outputs */
-  var pv = await sb.from('day_private').select('date,rating,why,tasks,prayer').eq('user_id',uid);
+  /* `predict` may not exist yet (its migration is Cory's to run) — probe, then degrade. */
+  var PVCOLS='date,rating,why,tasks,prayer';
+  var pv = await sb.from('day_private').select(PVCOLS+',predict').eq('user_id',uid);
+  if(pv.error){ S.hasPredict=false; pv = await sb.from('day_private').select(PVCOLS).eq('user_id',uid); }
+  else { S.hasPredict=true; }
   S.privAll = {}; (pv.data||[]).forEach(function(r){ S.privAll[r.date]=r; });
   S.priv = S.privAll[S.date] || null;
   return true;
@@ -209,17 +214,19 @@ function paintMast(){
   el('tape').innerHTML =
     tp('Today', '<span style="color:'+gtxt(pct)+'">'+pct+'%</span><s>'+g[0]+'</s>') +
     tp('Done',  done+'<s>of '+ids.length+'</s>') +
-    tp('Left today', fmt(rem)+'<s>of '+fmt(com)+'</s>') +
+    tp('Earned today', fmt(com-rem)+'<s>of '+fmt(com)+'</s>') +
     tp('7-day',  (r7==null?'—':r7+'%')+'<s>'+(r7==null?'':grade(r7)[0])+'</s>') +
     tp('30-day', (r30==null?'—':r30+'%')) +
     tp('90-day', (r90==null?'—':r90+'%')) +
     tp('Consistency', (function(){ var c=consistency(90);
         return c.pct+'%<s>'+c.hit+' of 90 d at 80%+</s>'; })()) +
-    tp('Streak', (function(){ var f=streakForgiving();
-        return f.days+'<s>d'+(f.frozen?(' · '+f.frozen+' of '+f.budget+' frozen'):' ≥80%')+'</s>'; })()) +
+    tp('Streak', (function(){ var f=streakShowedUp();
+        return f.days+'<s>d logged'+(f.frozen?(' · '+f.frozen+' frozen'):'')+'</s>'; })()) +
     tp('Weekly', wkDone+'<s>of '+wk.length+'</s>') +
     tp('Rating', (function(){ var r=rollRate(7); return (r==null?'—':r)+'<s>7d avg</s>'; })()) +
-    tp('Logged', dates().length+'<s>days</s>');
+    tp('Logged', dates().length+'<s>days</s>') +
+    tp('Gaps', (function(){ var g=gaps(30);
+        return g.missed+'<s>of last 30 d</s>'; })());
 }
 function tp(k,v){ return '<div class="tp"><div class="k">'+k+'</div><div class="v num">'+v+'</div></div>'; }
 
@@ -287,6 +294,7 @@ function paintLog(){
         ((S.hasCue && h.cue)?'<i class="cue">'+esc(h.cue)+'</i>':'')+'</span>'+
       (function(){ var mr=missRun(h.id); return mr>=3?'<span class="mrun" title="'+mr+
         ' days running">⚑'+mr+'</span>':''; })()+
+      (returnedOn(h,S.date)?'<span class="back" title="back after a miss — the return is the win">↩</span>':'')+
       (h.link?'<span class="lk"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7L11.5 5"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7L12 19"/></svg></span>':'')+
       (h.cadence==='weekly'?'<span class="wk">WEEKLY</span>':'')+
       '<span class="mn">'+(h.minutes?h.minutes+'m':'—')+'</span>'+
@@ -296,7 +304,7 @@ function paintLog(){
 
   var ids=daily().map(function(x){return x.id;});
   var done=ids.filter(function(i){return ck[i];}).length;
-  el('logC').textContent = done+' / '+ids.length+' · '+fmt(remaining(S.date))+' left';
+  el('logC').textContent = done+' / '+ids.length+' · '+fmt(earned(S.date))+' earned';
 }
 
 /* ---- input 2 and 3: the rating strip and the journal ---- */
@@ -1121,7 +1129,7 @@ function authScreen(){
 function paintAll(){
   paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs();
   paintCapacity(); paintNextSmall(); paintKpi();
-  paintStarter(); paintWeekly(); paintMcII(); paintYear();
+  paintStarter(); paintWeekly(); paintMcII(); paintYear(); paintPredict();
   paintRight(); paintCircle();
 }
 
@@ -1131,7 +1139,7 @@ function goDay(k){
   S.priv=S.privAll[k]||null;
   var d=dnum(k); S.calYM=[d.getFullYear(),d.getMonth()];
   paintMast(); paintRail(); paintLog(); paintRating(); paintJournalInputs(); paintSankey(); paintCal();
-  paintCapacity(); paintNextSmall(); paintWeekly(); paintYear();
+  paintCapacity(); paintNextSmall(); paintWeekly(); paintYear(); paintPredict();
   var t=el('jIn'); if(t && window.innerWidth<1080) window.scrollTo({top:Math.max(0,t.offsetTop-70),behavior:'smooth'});
 }
 
@@ -1223,7 +1231,10 @@ function wire(){
   el('bClose').onclick=async function(){
     await saveDay(); await load(); paintAll();
     var p=S.byDate[S.date].pct;
-    toast('closed · '+p+'% · '+grade(p)[0]);
+    toast('closed · '+fmt(earned(S.date))+' earned · '+p+'% · '+grade(p)[0]);
+    /* R-B rides this action: one optional tap, about tomorrow. */
+    var n=el('predict');
+    if(n && S.hasPredict){ n.scrollIntoView({behavior:'smooth',block:'center'}); }
   };
 
   el('jump').addEventListener('click',function(e){
@@ -1542,6 +1553,9 @@ function paintWeekly(){
       tp('Rating', d(a.rating,b.rating,''))+
       tp('Journal', a.journal+'<s>of 7 days</s>')+
       tp('90-day consistency', c90.pct+'%<s>'+c90.hit+' days at 80%+</s>')+
+      tp('Gaps', (function(){ var g=gaps(7); return g.missed+'<s>of 7 days</s>'; })())+
+      tp('Called right', (function(){ var r=predictionRecord(30);
+          return (r.made? r.kept+'<s>of '+r.made+' calls</s>' : '—<s>no calls</s>'); })())+
     '</div>'+
     (flags.length
       ? '<div class="flags"><span class="k">Off track — 3+ days running</span>'+
@@ -1551,6 +1565,14 @@ function paintWeekly(){
         'is either wrong, mis-cued, or genuinely dropped. Decide which at review.</div></div>'
       : '<div class="flags"><span class="k">Off track — 3+ days running</span>'+
         '<div class="s">Nothing is three days down. </div></div>')+
+    (function(){ var rt=returnsIn(weekWindow(0));
+      return rt.length
+        ? '<div class="flags"><span class="k">Came back this week</span>'+
+          rt.slice(0,6).map(function(r){ return '<div class="fl"><span>'+esc(label(r.h.name))+
+            '</span><b>'+r.n+'×</b></div>'; }).join('')+
+          '<div class="s">Returning after a miss is the most strongly evidenced move in this whole '+
+          'ledger — it beats never having missed, because nobody sustains never.</div></div>'
+        : ''; })()+
     '<div class="wk2"><div><span class="k">Weakest</span>'+
       st.slice(0,3).map(function(s){ return '<div class="fl"><span>'+esc(label(s.h.name))+'</span><b>'+s.pct+'%</b></div>'; }).join('')+
     '</div><div><span class="k">Strongest</span>'+
@@ -1578,13 +1600,14 @@ function paintYear(){
   var n=el('yearGrid'); if(!n) return;
   var y=(S.yearY==null? dnum(today()).getFullYear() : S.yearY);
   var lab=el('yearLab'); if(lab) lab.textContent=y;
-  var cells='', start=new Date(y,0,1), end=new Date(y,11,31);
+  var cells='', start=new Date(y,0,1), end=new Date(y,11,31), first0=dates()[0]||null;
   var pad=start.getDay();
   for(var i=0;i<pad;i++) cells+='<i class="yc pad"></i>';
   for(var d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
     var k=dk(d), r=S.byDate[k], p=(r&&r.pct!=null&&loggedOn(k))?r.pct:null;
-    cells+='<i class="yc" title="'+k+(p==null?' · no entry':' · '+p+'%')+'" style="background:'+
-      (p==null?'var(--sunk)':dens(p))+'"></i>';
+    var past=(k<today()), gap=(p==null && past && (!first0 || k>=first0));
+    cells+='<i class="yc'+(gap?' gap':'')+'" title="'+k+(p==null?(gap?' · GAP — no entry':' · no entry'):' · '+p+'%')+
+      '" style="background:'+(p==null?'var(--sunk)':dens(p))+'"></i>';
   }
   n.innerHTML=cells;
   var c=el('yearC');
@@ -1639,6 +1662,150 @@ function paintStarter(){
     await load(); paintAll(); toast('three standards added — tick one');
   };
 }
+
+
+/* ==================================================================
+   HT-6 — the five S-cost self-layer rocks (SPEC ruling R67).
+   R-C showed-up streak · R-B self-prediction · R-D gain framing ·
+   R-A miss-return reward · R-E missing day as a scored event.
+   Additive. No new DAILY input surface: R-B is one optional tap on the
+   existing close-the-day action, and it degrades to nothing when its
+   column is absent.
+   ================================================================== */
+
+/* ---- R-C · SHOWED-UP STREAK ----------------------------------------
+   Evidence: decoupling the streak from the performance target raised D14
+   retention +3.3% and put +10.5% more daily users on a streak (Duolingo,
+   A/B). The old streak keyed on >=80% and therefore measured the WRONG
+   EVENT: it read 0 for weeks while days were being logged. The streak now
+   counts the LOGGED day. The frozen-days budget is kept, unchanged, and
+   now covers unlogged days only. */
+function streakShowedUp(){
+  var k=today(), n=0, spent=[], guard=0, first=dates()[0]||null;
+  if(!loggedOn(k)) k=shift(k,-1);            /* today not logged yet is not a break */
+  while(guard++<400){
+    /* the walk stops where the ledger starts. Before the first logged day there is nothing to
+       forgive, and spending freezes into pre-history inflates the streak past the record itself
+       (rehearsal exhibit: 34 seeded days reported as 38). */
+    if(first && k<first) break;
+    if(loggedOn(k)){ n++; }
+    else {
+      /* budget bounded by the RUN, not by a sliding window (HT-5 exhibit) */
+      var allowed = STREAK.freezePer30 * (1 + Math.floor(n/30));
+      if(spent.length >= allowed) break;
+      spent.push(k);
+      n++;                                    /* carried, not counted as a win */
+    }
+    k=shift(k,-1);
+  }
+  return { days:n, frozen:spent.length, budget:STREAK.freezePer30, basis:'logged' };
+}
+
+/* ---- R-A · MISS-RETURN REWARD --------------------------------------
+   Evidence: the winning arm of a 61,293-person / 54-arm megastudy rewarded
+   people for RETURNING after a missed session (+0.40 weekly visits, +27%) —
+   the best-evidenced mechanic in the whole scan. HT already forgave a miss;
+   it never marked the return. Coming back is now the thing the ledger
+   visibly credits. */
+function prevLogged(k){
+  for(var i=1;i<=60;i++){ var p=shift(k,-i); if(loggedOn(p)) return p; }
+  return null;
+}
+function returnedOn(h,k){
+  if(!h || h.cadence==='weekly') return false;
+  if(!doneOn(h,k)) return false;
+  var p=prevLogged(k);
+  return !!p && !doneOn(h,p);                 /* done today, missed the last logged day */
+}
+function returnsIn(ks){
+  var out=[];
+  S.habits.forEach(function(h){
+    var n=0;
+    ks.forEach(function(k){ if(k<=today() && loggedOn(k) && returnedOn(h,k)) n++; });
+    if(n) out.push({ h:h, n:n });
+  });
+  return out.sort(function(a,b){ return b.n-a.n; });
+}
+
+/* ---- R-E · A MISSING DAY IS A SCORED EVENT -------------------------
+   Every product in eight categories treats a missing day as absence of
+   data — the score just does not render. A gap is a result. It is counted,
+   it is rendered, and it is named. */
+function gaps(n){
+  var end=today(), miss=0, first=dates()[0] || null;
+  for(var i=1;i<=n;i++){                      /* i=1 — today is not yet a gap */
+    var k=shift(end,-i);
+    if(first && k<first) break;               /* before the ledger began is not a gap */
+    if(!loggedOn(k)) miss++;
+  }
+  return { missed:miss, of:n, since:first };
+}
+
+/* ---- R-B · SELF-PREDICTION -----------------------------------------
+   Evidence: self-prediction framing reaches g=0.25 where plain behaviour
+   recording reaches g=0.07 — the largest legal upgrade in the scan, for one
+   question. Asked ONCE, on the existing close-the-day action, about
+   tomorrow. Stored on the day it is made; scored against the next day.
+   NOT a new daily input surface: skipping it costs nothing and the whole
+   feature hides when its column is absent. */
+function predictionOf(k){                     /* the prediction MADE on day k, about k+1 */
+  var p=S.privAll[k];
+  if(!p) return null;
+  var v=p.predict;
+  return (v===true||v==='true'||v===1) ? true : (v===false||v==='false'||v===0) ? false : null;
+}
+function predictionRecord(n){
+  var end=today(), made=0, kept=0;
+  for(var i=1;i<=(n||30);i++){
+    var day=shift(end,-i+1), prior=shift(day,-1);
+    if(day>today()) continue;
+    var pr=predictionOf(prior);
+    if(pr===null) continue;
+    if(!loggedOn(day)) { made++; continue; }   /* predicted and did not log = not kept */
+    made++;
+    var r=S.byDate[day];
+    var hit=(r&&r.pct!=null&&r.pct>=80);
+    if(pr===hit) kept++;
+  }
+  return { made:made, kept:kept, pct: made? Math.round(kept/made*100) : null };
+}
+async function savePredict(v){
+  if(!S.hasPredict) return;
+  var p=S.priv || (S.priv={});
+  p.date=S.date; p.predict=v; S.privAll[S.date]=p;
+  var res=await sb.from('day_private').upsert({
+    user_id:S.me.id, date:S.date,
+    rating:(p.rating==null?null:p.rating), why:p.why||'', tasks:p.tasks||'', prayer:p.prayer||'',
+    predict:v
+  },{ onConflict:'user_id,date' });
+  toast(res.error ? 'prediction not saved' : (v?'called it — yes':'called it — no'));
+  paintPredict();
+}
+function paintPredict(){
+  var n=el('predict'); if(!n) return;
+  if(!S.hasPredict){ n.style.display='none'; n.innerHTML=''; return; }
+  n.style.display='';
+  var made=predictionOf(today()), rec=predictionRecord(30);
+  n.innerHTML='<div class="pr"><span class="k">Tomorrow</span>'+
+    '<div class="s">Will you hit your standards tomorrow? Calling it out loud is worth more than '+
+    'recording today was — say it and the ledger checks.</div>'+
+    '<div class="tools" style="padding-top:8px">'+
+      '<button class="btn'+(made===true?' pri':'')+'" id="prY">Yes</button>'+
+      '<button class="btn'+(made===false?' pri':'')+'" id="prN">No</button>'+
+      '<span style="flex:1"></span>'+
+      '<span class="s">'+(rec.made? ('called right '+rec.kept+' of '+rec.made) : 'no calls yet')+'</span>'+
+    '</div></div>';
+  var y=el('prY'), no=el('prN');
+  if(y)  y.onclick=function(){ savePredict(true); };
+  if(no) no.onclick=function(){ savePredict(false); };
+}
+
+/* ---- R-D · GAIN FRAMING --------------------------------------------
+   Evidence: identical stakes, gain framing vs loss framing — 17.40 vs 11.29
+   goal-days out of 20 (p=.007). The sheet used to lead with what was LEFT
+   and what was OUTSTANDING. It now leads with what was EARNED. Same
+   arithmetic; the subtraction is simply never the headline. */
+function earned(k){ return committed() - remaining(k); }
 
 /* ============================ boot ============================ */
 (async function boot(){
